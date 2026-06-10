@@ -43,7 +43,7 @@ class QueueChannel:
 				description="Set the prefix before for the bot`s commands",
 				verify=lambda x: len(x) == 1,
 				verify_message="Command prefix must be exactly one symbol.",
-				default="!",
+				default="=",
 				notnull=True
 			),
 			Variables.OptionVar(
