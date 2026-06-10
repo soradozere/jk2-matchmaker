@@ -208,6 +208,16 @@ async def _rank(ctx: MessageContext, args: str = None):
 	await bot.commands.rank(ctx, player=member)
 
 
+@message_command('servers')
+async def _servers(ctx: MessageContext, args: str = None):
+	await bot.commands.servers_status(ctx)
+
+
+@message_command('pug')
+async def _pug(ctx: MessageContext, args: str = None):
+	await bot.commands.pug_role_toggle(ctx)
+
+
 @message_command('rebalance')
 async def _rebalance(ctx: MessageContext, args: str = None):
 	await bot.commands.rebalance(ctx)

@@ -5,3 +5,4 @@ from .stats import *
 from .admin import *
 from .misc import *
 from .soracle import *
+from .pug import *

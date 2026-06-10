@@ -1,0 +1,28 @@
+__all__ = ['servers_status', 'pug_role_toggle']
+
+from nextcord.utils import get as dc_get
+
+import bot
+from bot import jk2_servers
+
+
+async def servers_status(ctx):
+	results = await jk2_servers.query_all()
+	await ctx.reply("\n".join(jk2_servers.status_lines(results)))
+
+
+async def pug_role_toggle(ctx):
+	guild = ctx.channel.guild
+	role = dc_get(guild.roles, name=jk2_servers.PUG_ROLE_NAME)
+	if role is None:
+		role = await guild.create_role(
+			name=jk2_servers.PUG_ROLE_NAME, mentionable=True, reason="Created by JK2 Matchmaker"
+		)
+
+	member = ctx.author
+	if role in member.roles:
+		await member.remove_roles(role)
+		await ctx.success(ctx.qc.gt("Removed, you won't be pinged for PUGs anymore."))
+	else:
+		await member.add_roles(role)
+		await ctx.success(ctx.qc.gt("You're in! You'll get pinged when a server fills up."))

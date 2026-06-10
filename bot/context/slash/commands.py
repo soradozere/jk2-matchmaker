@@ -587,6 +587,18 @@ async def _rank(
 ): await run_slash(bot.commands.rank, interaction=interaction, player=player)
 
 
+@dc.slash_command(name='servers', description='Live status of the watched JK2 game servers.', **guild_kwargs)
+async def _servers(
+		interaction: Interaction,
+): await run_slash(bot.commands.servers_status, interaction=interaction)
+
+
+@dc.slash_command(name='pug', description='Toggle your @pug role — get pinged when a JK2 server fills up.', **guild_kwargs)
+async def _pug(
+		interaction: Interaction,
+): await run_slash(bot.commands.pug_role_toggle, interaction=interaction)
+
+
 @dc.slash_command(name='rebalance', description='Return the match from manual picking to the Soracle balance suggestions.', **guild_kwargs)
 async def _rebalance(
 		interaction: Interaction,

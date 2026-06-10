@@ -29,6 +29,7 @@ async def on_think(frame_time):
 	await bot.noadds.think(frame_time)
 	await bot.stats.jobs.think(frame_time)
 	await bot.expire_auto_ready(frame_time)
+	await bot.jk2_servers.think(frame_time)
 
 
 @dc.event

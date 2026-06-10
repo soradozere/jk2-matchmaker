@@ -97,6 +97,14 @@ class QueueChannel:
 				default=1,
 				notnull=True
 			),
+			Variables.BoolVar(
+				"pug_pings",
+				display="JK2 server pug pings",
+				section="General",
+				default=0,
+				notnull=True,
+				description="Ping the @pug role in this channel when a watched JK2 server crosses the player threshold."
+			),
 			Variables.DurationVar(
 				"expire_time",
 				display="Auto remove on timer after last !add command",

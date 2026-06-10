@@ -12,6 +12,7 @@ from .expire import expire
 from .stats import stats
 from .stats.noadds import noadds
 from .exceptions import Exceptions as Exc
+from . import jk2_servers
 from .context import Context, SlashContext, SystemContext
 from . import commands
 
