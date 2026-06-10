@@ -236,6 +236,33 @@ class FlatRating(BaseRating):
 		return [r1, r2]
 
 
+class EloRating(BaseRating):
+	""" Classic Elo on team averages: every player on a team gets the same change,
+		K * (score - expected), expected from the 400-point logistic curve.
+		K=24 base; the channel's rating_scale config scales it further. """
+
+	K = 24
+
+	def rate(self, winners, losers, draw=False):
+		avg_w = sum(p['rating'] for p in winners) / len(winners)
+		avg_l = sum(p['rating'] for p in losers) / len(losers)
+		expected_w = 1 / (1 + 10 ** ((avg_l - avg_w) / 400))
+		expected_l = 1 - expected_w
+
+		score_w, score_l = (0.5, 0.5) if draw else (1, 0)
+		change_w = self.K * (score_w - expected_w)
+		change_l = self.K * (score_l - expected_l)
+
+		if draw:
+			r1 = [self._scale_changes(p, change_w, 0, 0) for p in winners]
+			r2 = [self._scale_changes(p, change_l, 0, 0) for p in losers]
+		else:
+			r1 = [self._scale_changes(p, change_w, 0, 1) for p in winners]
+			r2 = [self._scale_changes(p, change_l, 0, -1) for p in losers]
+
+		return [r1, r2]
+
+
 class Glicko2Rating(BaseRating):
 
 	def __init__(self, **kwargs):
