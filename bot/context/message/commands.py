@@ -208,6 +208,16 @@ async def _rank(ctx: MessageContext, args: str = None):
 	await bot.commands.rank(ctx, player=member)
 
 
+@message_command('tier', 'soracle')
+async def _soracle(ctx: MessageContext, args: str = None):
+	if not args:
+		await bot.commands.soracle_info(ctx, player=None)
+		return
+	if (member := await ctx.get_member(args)) is None:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+	await bot.commands.soracle_info(ctx, player=member)
+
+
 @message_command('leaderboard', 'lb')
 async def _leaderboard(ctx: MessageContext, args: str = None):
 	page = int(args) if args else None
