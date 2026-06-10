@@ -47,6 +47,16 @@ async def fetch_player(discord_id):
 	return data
 
 
+async def fetch_player_stats(discord_id):
+	""" Month-to-date stats dict for a player, or None if the discord id is unlinked. """
+	status, data = await _request('GET', f"/api/bot/stats/by-discord/{discord_id}")
+	if status == 404:
+		return None
+	if status != 200 or data is None:
+		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+	return data
+
+
 async def fetch_balance(discord_ids):
 	""" Returns the list of balance options for exactly 12 discord ids.
 		Each option carries result.teamRed/teamBlue (names), tier totals, mic counts

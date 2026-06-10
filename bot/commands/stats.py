@@ -168,6 +168,9 @@ async def rank(ctx, player: Member = None):
 
 
 async def leaderboard(ctx, page: int = 1):
+	if not any(q.cfg.ranked for q in ctx.qc.queues):
+		raise bot.Exc.PermissionError(ctx.qc.gt("The leaderboard is only available in channels with a ranked queue."))
+
 	page = (page or 1) - 1
 
 	data = await ctx.qc.get_lb()

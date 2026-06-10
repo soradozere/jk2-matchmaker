@@ -26,7 +26,7 @@ async def admin_rating(interaction: Interaction):
 	pass
 
 
-@dc.slash_command(name='stats', **guild_kwargs)
+@dc.slash_command(name='stats_admin', **guild_kwargs)
 async def admin_stats(interaction: Interaction):
 	pass
 

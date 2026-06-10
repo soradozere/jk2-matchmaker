@@ -605,6 +605,13 @@ async def _rebalance(
 ): await run_slash(bot.commands.rebalance, interaction=interaction)
 
 
+@dc.slash_command(name='stats', description='Month-to-date JK2 stats from Soracle (caps, returns, K/D and more).', **guild_kwargs)
+async def _monthly_stats(
+		interaction: Interaction,
+		player: Member = SlashOption(required=False, verify=False),
+): await run_slash(bot.commands.monthly_stats, interaction=interaction, player=player)
+
+
 @dc.slash_command(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
 async def _tier(
 		interaction: Interaction,

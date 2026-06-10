@@ -223,6 +223,16 @@ async def _rebalance(ctx: MessageContext, args: str = None):
 	await bot.commands.rebalance(ctx)
 
 
+@message_command('stats')
+async def _monthly_stats(ctx: MessageContext, args: str = None):
+	if not args:
+		await bot.commands.monthly_stats(ctx, player=None)
+		return
+	if (member := await ctx.get_member(args)) is None:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+	await bot.commands.monthly_stats(ctx, player=member)
+
+
 @message_command('tier', 'soracle')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:
