@@ -119,6 +119,70 @@ class Embeds:
 
 		return embed
 
+	def balance_menu(self, menu):
+		option = menu.option
+		result = option.get('result') or {}
+		embed = Embed(
+			colour=Colour(0x50e3c2),
+			title=self.m.gt("__**{queue}** — suggested teams (option {n}/{total})__").format(
+				queue=self.m.queue.name[0].upper()+self.m.queue.name[1:],
+				n=menu.idx + 1, total=len(menu.options)
+			)
+		)
+		if option.get('label') or option.get('description'):
+			embed.description = " — ".join(filter(None, (
+				f"**{option['label']}**" if option.get('label') else None,
+				option.get('description')
+			)))
+
+		members = {p.id: p for p in self.m.players}
+		for team, ids_key, names_key, tier_key, mic_key in (
+			(self.m.teams[0], 'teamRedDiscordIds', 'teamRed', 'redTierTotal', 'redMic'),
+			(self.m.teams[1], 'teamBlueDiscordIds', 'teamBlue', 'blueTierTotal', 'blueMic'),
+		):
+			names = result.get(names_key) or []
+			ids = option.get(ids_key) or []
+			players = " ​ ".join((
+				f"`{get_nick(members[int(i)])}`" if i and int(i) in members else f"`{names[n] if n < len(names) else '?'}`"
+				for n, i in enumerate(ids)
+			)) or self.m.gt("empty")
+			embed.add_field(
+				name=f"{team.emoji} ​ **{team.name}** ​ `〈tier {result.get(tier_key, '?')}〉` 🎤{result.get(mic_key, '?')}",
+				value=" ​ ❲ ​ " + players + " ​ ❳",
+				inline=False
+			)
+
+		approvers = menu.approvers
+		if approvers:
+			embed.add_field(
+				name=self.m.gt("Captains"),
+				value=" ​ " + " ​ ".join((
+					f"{'✅' if c in menu.accepts else '☐'} {c.mention}" for c in approvers
+				)),
+				inline=False
+			)
+		else:
+			embed.add_field(
+				name=self.m.gt("Captains"),
+				value=" ​ " + self.m.gt("No captains in this match — any **two** players' {emoji} accepts.").format(
+					emoji=menu.ACCEPT_EMOJI
+				) + (f" ({len(menu.accepts)}/2)" if menu.accepts else ""),
+				inline=False
+			)
+		footer_lines = [self.m.gt(
+			"{accept} accept ​ · ​ {next} next option ​ · ​ {manual} manual picks"
+		).format(accept=menu.ACCEPT_EMOJI, next=menu.NEXT_EMOJI, manual=menu.MANUAL_EMOJI)]
+		if menu.timeout:
+			minutes, seconds = divmod(int(menu.timeout), 60)
+			duration = f"{minutes}m{seconds}s" if minutes and seconds else (f"{minutes} minutes" if minutes else f"{seconds} seconds")
+			footer_lines.append(self.m.gt("Option **{n}** is auto-accepted after {duration}.").format(
+				n=menu.idx + 1, duration=duration
+			))
+		embed.add_field(name="—", value="\n".join(footer_lines) + "\n​", inline=False)
+		embed.set_footer(**self.footer)
+
+		return embed
+
 	def final_message(self):
 		show_ranks = bool(self.m.ranked and not self.m.qc.cfg.rating_nicks)
 		embed = Embed(

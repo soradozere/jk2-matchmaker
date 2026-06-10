@@ -587,6 +587,19 @@ async def _rank(
 ): await run_slash(bot.commands.rank, interaction=interaction, player=player)
 
 
+@dc.slash_command(name='rebalance', description='Return the match from manual picking to the Soracle balance suggestions.', **guild_kwargs)
+async def _rebalance(
+		interaction: Interaction,
+): await run_slash(bot.commands.rebalance, interaction=interaction)
+
+
+@dc.slash_command(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
+async def _tier(
+		interaction: Interaction,
+		player: Member = SlashOption(required=False, verify=False),
+): await run_slash(bot.commands.soracle_info, interaction=interaction, player=player)
+
+
 @dc.slash_command(name='leaderboard', description='Show rating leaderboard.', **guild_kwargs)
 async def _leaderboard(
 		interaction: Interaction,

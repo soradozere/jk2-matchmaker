@@ -208,6 +208,11 @@ async def _rank(ctx: MessageContext, args: str = None):
 	await bot.commands.rank(ctx, player=member)
 
 
+@message_command('rebalance')
+async def _rebalance(ctx: MessageContext, args: str = None):
+	await bot.commands.rebalance(ctx)
+
+
 @message_command('tier', 'soracle')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:

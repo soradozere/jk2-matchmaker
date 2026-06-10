@@ -58,12 +58,13 @@ class Draft:
 			raise bot.Exc.PermissionError(self.m.gt("You must possess the captain's role."))
 		elif (team := find(lambda t: t.name.lower() == team_name.lower(), self.m.teams[:2])) is None:
 			raise bot.Exc.SyntaxError(self.m.gt("Specified team name not found."))
-		elif len(team):
-			raise bot.Exc.PermissionError(
-				self.m.gt(f"Team **{team.name}** already have a captain. The captain must type **/capme** first.")
-			)
+		elif author in team[:1]:
+			raise bot.Exc.ValueError(self.m.gt(f"You are already the captain of team **{team.name}**."))
 
+		# last-come wins: displace the current captain (if any) back to the unpicked pool
 		find(lambda t: author in t, self.m.teams).remove(author)
+		if len(team):
+			self.m.teams[2].add(team.pop(0))
 		team.insert(0, author)
 		await self.print(ctx)
 

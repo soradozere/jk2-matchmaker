@@ -125,6 +125,26 @@ class PickupQueue:
 				]),
 				notnull=True
 			),
+			Variables.BoolVar(
+				"soracle_balance",
+				display="Soracle balance",
+				section="Teams",
+				default=0,
+				notnull=True,
+				description="\n".join([
+					"Suggest balanced teams from Soracle when the queue starts (12-player queues, 'draft' pick mode).",
+					"Captains can accept a suggestion, cycle the options or fall back to manual picking."
+				])
+			),
+			Variables.DurationVar(
+				"soracle_balance_timeout",
+				display="Soracle balance timeout",
+				section="Teams",
+				description="\n".join([
+					"How long captains get to decide on a Soracle suggestion before the displayed option is auto-accepted.",
+					"Default 3 minutes. Set 0s to disable auto-accept (menu waits until the match times out)."
+				])
+			),
 			Variables.StrVar(
 				"pick_order",
 				display="Teams picking order",
@@ -339,6 +359,7 @@ class PickupQueue:
 			ranked=self.cfg.ranked, pick_captains=self.cfg.pick_captains,
 			captains_role_id=self.cfg.captains_role.id if self.cfg.captains_role else None,
 			pick_teams=self.cfg.pick_teams, pick_order=self.cfg.pick_order,
+			soracle_balance=self.cfg.soracle_balance, soracle_balance_timeout=self.cfg.soracle_balance_timeout,
 			maps=[i['name'] for i in self.cfg.maps], vote_maps=self.cfg.vote_maps,
 			map_count=self.cfg.map_count, check_in_timeout=self.cfg.check_in_timeout,
 			check_in_discard=self.cfg.check_in_discard, check_in_discard_immediately=self.cfg.check_in_discard_immediately,

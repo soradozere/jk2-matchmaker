@@ -1,13 +1,11 @@
 __all__ = ['soracle_info']
 
-import asyncio
-import aiohttp
 from nextcord import Member, Embed, Colour
 
-from core.config import cfg
 from core.utils import get_nick
 
 import bot
+from bot import soracle
 
 
 async def soracle_info(ctx, player: Member = None):
@@ -15,24 +13,15 @@ async def soracle_info(ctx, player: Member = None):
 	if not target:
 		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
 
-	url = f"{cfg.SORACLE_API_URL}/api/bot/player/by-discord/{target.id}"
-	headers = {'Authorization': f"Bearer {cfg.SORACLE_API_SECRET}"}
-
 	try:
-		timeout = aiohttp.ClientTimeout(total=5)
-		async with aiohttp.ClientSession(timeout=timeout) as session:
-			async with session.get(url, headers=headers) as resp:
-				status = resp.status
-				data = await resp.json(content_type=None) if status == 200 else None
-	except (aiohttp.ClientError, asyncio.TimeoutError):
-		raise bot.Exc.NotFoundError("Could not reach Soracle, please try again later.")
+		data = await soracle.fetch_player(target.id)
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
 
-	if status == 404:
+	if data is None:
 		raise bot.Exc.NotFoundError(
 			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
 		)
-	if status != 200 or data is None:
-		raise bot.Exc.NotFoundError(f"Soracle returned an unexpected response (HTTP {status}).")
 
 	embed = Embed(title=f"__{data.get('name') or get_nick(target)}__", colour=Colour(0x7289DA))
 	if tooltip := data.get('tooltip'):

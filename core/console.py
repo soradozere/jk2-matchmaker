@@ -49,6 +49,7 @@ class Log:
 			string)
 		self.display(string)
 		self.file.write(string + '\r\n')
+		self.file.flush()
 
 	def close(self):
 		self.file.close()

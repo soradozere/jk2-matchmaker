@@ -1,6 +1,7 @@
 __all__ = [
 	'show_matches', 'show_teams', 'set_ready', 'sub_me', 'sub_for', 'put',
-	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual'
+	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual',
+	'rebalance'
 ]
 
 from nextcord import Member
@@ -76,6 +77,11 @@ async def cap_for(ctx, match: bot.Match, team_name: str):
 @author_match
 async def pick(ctx, match: bot.Match, players: List[Member]):
 	await match.draft.pick(ctx, ctx.author, players)
+
+
+@author_match
+async def rebalance(ctx, match: bot.Match):
+	await match.balance_menu.reopen(ctx, ctx.author)
 
 
 async def put(ctx, match_id: int, player: Member, team_name: str):
