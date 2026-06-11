@@ -1,4 +1,4 @@
-__all__ = ['servers_status', 'pug_role_toggle']
+__all__ = ['servers_status', 'pug_role_toggle', 'pug_settings']
 
 from nextcord import Embed, Colour
 from nextcord.utils import get as dc_get
@@ -16,6 +16,21 @@ async def servers_status(ctx):
 	)
 	embed.set_footer(text=f"🟢 {jk2_servers.PLAYER_THRESHOLD}+ players · updates live · /pug to get pinged")
 	await ctx.reply(embed=embed)
+
+
+async def pug_settings(ctx):
+	await ctx.reply(ctx.qc.gt(
+		"I watch {servers} JK2 servers and ping `@{role}` when one reaches **{threshold}+** players "
+		"(ironman servers use their ironman count instead). "
+		"I won't ping about the same server more than once every **{hours} hours**. "
+		"Type {cmd} to join or leave the ping list."
+	).format(
+		servers=len(jk2_servers.SERVERS),
+		role=jk2_servers.PUG_ROLE_NAME,
+		threshold=jk2_servers.PLAYER_THRESHOLD,
+		hours=jk2_servers.PING_COOLDOWN // 3600,
+		cmd="`/pug`"
+	))
 
 
 async def pug_role_toggle(ctx):

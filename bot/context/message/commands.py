@@ -218,6 +218,11 @@ async def _pug(ctx: MessageContext, args: str = None):
 	await bot.commands.pug_role_toggle(ctx)
 
 
+@message_command('pug_settings')
+async def _pug_settings(ctx: MessageContext, args: str = None):
+	await bot.commands.pug_settings(ctx)
+
+
 @message_command('rebalance')
 async def _rebalance(ctx: MessageContext, args: str = None):
 	await bot.commands.rebalance(ctx)

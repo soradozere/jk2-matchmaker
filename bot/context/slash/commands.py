@@ -599,6 +599,12 @@ async def _pug(
 ): await run_slash(bot.commands.pug_role_toggle, interaction=interaction)
 
 
+@dc.slash_command(name='pug_settings', description='Explain how the JK2 server pinger works.', **guild_kwargs)
+async def _pug_settings(
+		interaction: Interaction,
+): await run_slash(bot.commands.pug_settings, interaction=interaction)
+
+
 @dc.slash_command(name='rebalance', description='Return the match from manual picking to the Soracle balance suggestions.', **guild_kwargs)
 async def _rebalance(
 		interaction: Interaction,

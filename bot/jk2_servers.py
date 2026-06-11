@@ -21,7 +21,7 @@ PUG_ROLE_NAME = "pug"
 PLAYER_THRESHOLD = 5
 POLL_INTERVAL = 5 * 60
 PING_COOLDOWN = 240 * 60  # per server
-IGNORED_NAME_PREFIXES = ["pada"]  # spectator bots etc. (color-stripped names may truncate)
+IGNORED_NAME_PREFIXES = ["pidi"]  # spectator bots (Pidi/Pidiwin); "Pada*" is usually a default-named human
 
 SERVERS = [
 	dict(name="NA East", host="192.223.24.74", port=28070),
