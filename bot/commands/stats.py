@@ -131,7 +131,11 @@ async def rank(ctx, player: Member = None):
 		embed.add_field(name=ctx.qc.gt("Matches"), value=f"**{(p['wins'] + p['losses'] + p['draws'])}**", inline=True)
 		if p['rating']:
 			embed.add_field(name=ctx.qc.gt("Rank"), value=f"**{ctx.qc.rating_rank(p['rating'])['rank']}**", inline=True)
-			embed.add_field(name=ctx.qc.gt("Rating"), value=f"**{p['rating']}**±{p['deviation']}")
+			# deviation only means something for Glicko2/TrueSkill — hide it for Elo/flat
+			if type(ctx.qc.rating).__name__ in ('Glicko2Rating', 'TrueSkillRating'):
+				embed.add_field(name=ctx.qc.gt("Rating"), value=f"**{p['rating']}**±{p['deviation']}")
+			else:
+				embed.add_field(name=ctx.qc.gt("Rating"), value=f"**{p['rating']}**")
 		else:
 			embed.add_field(name=ctx.qc.gt("Rank"), value="**〈?〉**", inline=True)
 			embed.add_field(name=ctx.qc.gt("Rating"), value="**?**")

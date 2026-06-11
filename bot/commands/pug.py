@@ -1,5 +1,6 @@
 __all__ = ['servers_status', 'pug_role_toggle']
 
+from nextcord import Embed, Colour
 from nextcord.utils import get as dc_get
 
 import bot
@@ -8,7 +9,13 @@ from bot import jk2_servers
 
 async def servers_status(ctx):
 	results = await jk2_servers.query_all()
-	await ctx.reply("\n".join(jk2_servers.status_lines(results)))
+	embed = Embed(
+		title="JK2 server status",
+		colour=Colour(0x50e3c2),
+		description="\n".join(jk2_servers.status_lines(results))
+	)
+	embed.set_footer(text=f"🟢 {jk2_servers.PLAYER_THRESHOLD}+ players · updates live · /pug to get pinged")
+	await ctx.reply(embed=embed)
 
 
 async def pug_role_toggle(ctx):

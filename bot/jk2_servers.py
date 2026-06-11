@@ -21,7 +21,7 @@ PUG_ROLE_NAME = "pug"
 PLAYER_THRESHOLD = 5
 POLL_INTERVAL = 5 * 60
 PING_COOLDOWN = 240 * 60  # per server
-IGNORED_NAME_PREFIXES = ["padawan"]  # spectator bots etc.
+IGNORED_NAME_PREFIXES = ["pada"]  # spectator bots etc. (color-stripped names may truncate)
 
 SERVERS = [
 	dict(name="NA East", host="192.223.24.74", port=28070),
@@ -46,7 +46,7 @@ def _strip_colors(name):
 		else:
 			clean += name[i]
 			i += 1
-	return clean
+	return clean.strip("^ ")
 
 
 def query_server(host, port, timeout=3.0):
@@ -166,15 +166,19 @@ async def _poll():
 
 
 def status_lines(results):
-	lines = ["**JK2 Server Status**\n"]
+	""" Embed-description lines, busiest servers first, offline last. """
+	results = sorted(
+		results,
+		key=lambda r: (not r[1].get("online"), -(r[1].get("count", 0) if r[1].get("online") else 0))
+	)
+	lines = []
 	for server, data in results:
 		if not data.get("online"):
-			lines.append(f"🔴 **{server['name']}** — offline or unreachable")
+			lines.append(f"🔴 ​ **{server['name']}** — offline")
 			continue
-		indicator = "🟢" if data["count"] >= PLAYER_THRESHOLD else "🟡"
-		count_str = f"{data['count']} ironmen" if data["ironman"] else f"{data['count']}/{data['max_players']} players"
-		line = f"{indicator} **{server['name']}** — {count_str} | Map: `{data['map']}`"
+		indicator = "🟢" if data["count"] >= PLAYER_THRESHOLD else ("🟡" if data["count"] else "⚪")
+		count_str = f"**{data['count']}** ironmen" if data["ironman"] else f"**{data['count']}**/{data['max_players']}"
+		lines.append(f"{indicator} ​ **{server['name']}** ​ {count_str} ​ · ​ `{data['map']}`")
 		if data["players"]:
-			line += f"\n> {', '.join(data['players'])}"
-		lines.append(line)
+			lines.append(f"> -# {', '.join(data['players'])} ​ · ​ `connect {server['host']}:{server['port']}`")
 	return lines
