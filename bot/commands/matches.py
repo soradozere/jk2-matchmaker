@@ -1,7 +1,7 @@
 __all__ = [
 	'show_matches', 'show_teams', 'set_ready', 'sub_me', 'sub_for', 'put',
 	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual',
-	'rebalance'
+	'rebalance', 'remove_match_player'
 ]
 
 from nextcord import Member
@@ -82,6 +82,13 @@ async def pick(ctx, match: bot.Match, players: List[Member]):
 @author_match
 async def rebalance(ctx, match: bot.Match):
 	await match.balance_menu.reopen(ctx, ctx.author)
+
+
+async def remove_match_player(ctx, player: Member):
+	ctx.check_perms(ctx.Perms.MODERATOR)
+	if (match := find(lambda m: m.qc == ctx.qc and player in m.players, bot.active_matches)) is None:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("Specified user is not in a match."))
+	await match.remove_player(ctx, player)
 
 
 async def put(ctx, match_id: int, player: Member, team_name: str):

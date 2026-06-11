@@ -280,6 +280,13 @@ async def _sub_force(
 ): await run_slash(bot.commands.sub_force, interaction=interaction, player1=player1, player2=player2)
 
 
+@groups.admin_match.subcommand(name='remove_player', description='Remove a player from a drafting match entirely.')
+async def _remove_match_player(
+		interaction: Interaction,
+		player: Member = SlashOption(),
+): await run_slash(bot.commands.remove_match_player, interaction=interaction, player=player)
+
+
 @groups.admin_match.subcommand(name='put', description='Put a player in a team.')
 async def _put(
 		interaction: Interaction,

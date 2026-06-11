@@ -293,6 +293,28 @@ class Match:
 		else:
 			await self.final_message(ctx)
 
+	async def remove_player(self, ctx, member):
+		""" Moderator removal of a player from a drafting match (e.g. a 13+ force-start
+			where someone drops out). At 12 players the captains can =rebalance. """
+		if self.state != self.DRAFT:
+			raise bot.Exc.MatchStateError(self.gt("Players can only be removed on the draft stage."))
+
+		self.players.remove(member)
+		for team in self.teams:
+			team.rem(member)
+		if member in self.captains:
+			self.captains.remove(member)
+
+		message = self.gt("{player} was removed from the match ({left} players left).").format(
+			player=member.mention, left=len(self.players)
+		)
+		if len(self.players) == 12 and self.cfg['soracle_balance']:
+			message += "\n" + self.gt("A captain can type {cmd} for fresh Soracle suggestions.").format(
+				cmd=f"`{self.qc.cfg.prefix}rebalance`"
+			)
+		await ctx.notice(message)
+		await self.draft.print(ctx)
+
 	async def report_loss(self, ctx, member, draw_flag):
 		if self.state != self.WAITING_REPORT:
 			raise bot.Exc.MatchStateError(self.gt("The match must be on the waiting report stage."))
