@@ -170,8 +170,11 @@ class Embeds:
 				inline=False
 			)
 		footer_lines = [self.m.gt(
-			"{accept} accept ​ · ​ {next} next option ​ · ​ {manual} manual picks"
-		).format(accept=menu.ACCEPT_EMOJI, next=menu.NEXT_EMOJI, manual=menu.MANUAL_EMOJI)]
+			"{options} view an option ​ · ​ {accept} accept ​ · ​ {manual} manual picks"
+		).format(
+			options="".join(menu.OPTION_EMOJIS[:len(menu.options)]),
+			accept=menu.ACCEPT_EMOJI, manual=menu.MANUAL_EMOJI
+		)]
 		if menu.timeout:
 			minutes, seconds = divmod(int(menu.timeout), 60)
 			duration = f"{minutes}m{seconds}s" if minutes and seconds else (f"{minutes} minutes" if minutes else f"{seconds} seconds")

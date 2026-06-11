@@ -16,7 +16,7 @@ class BalanceMenu:
 		drops into the untouched vanilla draft flow. """
 
 	ACCEPT_EMOJI = "✅"
-	NEXT_EMOJI = "🔄"
+	OPTION_EMOJIS = ["1️⃣", "2️⃣", "3️⃣"]
 	MANUAL_EMOJI = "✋"
 
 	def __init__(self, match):
@@ -83,7 +83,7 @@ class BalanceMenu:
 			await self.m.next_state(ctx)
 			return
 		try:
-			for emoji in (self.ACCEPT_EMOJI, self.NEXT_EMOJI, self.MANUAL_EMOJI):
+			for emoji in (*self.OPTION_EMOJIS[:len(self.options)], self.ACCEPT_EMOJI, self.MANUAL_EMOJI):
 				await self.message.add_reaction(emoji)
 		except DiscordException as e:
 			# usually missing Add Reactions or Read Message History on the channel
@@ -145,11 +145,13 @@ class BalanceMenu:
 				else:
 					await self.refresh()
 
-		elif emoji == self.NEXT_EMOJI and not remove:
-			self.idx = (self.idx + 1) % len(self.options)
-			self.accepts = set()
-			log.info(f"Match {self.m.id}: {get_nick(user)} cycled to option {self.idx + 1}")
-			await self.refresh()
+		elif emoji in self.OPTION_EMOJIS and not remove:
+			new_idx = self.OPTION_EMOJIS.index(emoji)
+			if new_idx < len(self.options) and new_idx != self.idx:
+				self.idx = new_idx
+				self.accepts = set()
+				log.info(f"Match {self.m.id}: {get_nick(user)} switched to option {self.idx + 1}")
+				await self.refresh()
 
 		elif emoji == self.MANUAL_EMOJI and not remove:
 			log.info(f"Match {self.m.id}: {get_nick(user)} chose manual picks")
@@ -209,6 +211,17 @@ class BalanceMenu:
 			raise bot.Exc.MatchStateError(self.m.gt("The match is not on the draft stage."))
 		if not (self.m.cfg['soracle_balance'] and self.m.cfg['pick_teams'] == "draft"):
 			raise bot.Exc.NotFoundError(self.m.gt("Soracle balancing is not enabled on this queue."))
+		# The menu buttons belong to whoever leads the teams NOW — a =capfor'd captain
+		# keeps control through a rebalance instead of reverting to the auto-picked pair.
+		current_leads = [t[0] for t in self.m.teams[:2] if len(t)]
+		for previous in self.m.captains:
+			if len(current_leads) >= 2:
+				break
+			if previous not in current_leads and previous in self.m.players:
+				current_leads.append(previous)
+		if current_leads:
+			self.m.captains = current_leads[:2]
+
 		if author not in self.m.captains[:2]:
 			ctx.check_perms(ctx.Perms.MODERATOR)
 
