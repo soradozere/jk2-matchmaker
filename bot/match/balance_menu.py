@@ -172,9 +172,16 @@ class BalanceMenu:
 			await self.m.next_state(ctx)
 			return
 
-		self.m.teams[0].set(self.m.sort_players(teams[0]))
-		self.m.teams[1].set(self.m.sort_players(teams[1]))
+		# Keep the menu captains as team captains (team[0] reports the result):
+		# sort by rating, then move a menu captain to the front of their team.
+		for n in (0, 1):
+			team = self.m.sort_players(teams[n])
+			if captain := next((c for c in self.m.captains[:2] if c in team), None):
+				team.remove(captain)
+				team.insert(0, captain)
+			self.m.teams[n].set(team)
 		self.m.teams[2].clear()
+		self.m.captains = [t[0] for t in self.m.teams[:2] if len(t)]
 
 		# Teams are final — skip the draft stage entirely
 		if self.m.DRAFT in self.m.states:
