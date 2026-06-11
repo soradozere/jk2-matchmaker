@@ -2,6 +2,7 @@ __all__ = ['soracle_info', 'monthly_stats']
 
 from nextcord import Member, Embed, Colour
 
+from core.config import cfg
 from core.utils import get_nick
 
 import bot
@@ -57,7 +58,8 @@ async def monthly_stats(ctx, player: Member = None):
 	t = data.get('totals') or {}
 	embed = Embed(
 		title=f"__{data.get('name') or get_nick(target)}__ — {data.get('month', 'this month')}",
-		colour=Colour(0x50e3c2)
+		colour=Colour(0x50e3c2),
+		url=cfg.SORACLE_API_URL
 	)
 	if tooltip := data.get('tooltip'):
 		embed.description = f"*{tooltip}*"
@@ -83,6 +85,11 @@ async def monthly_stats(ctx, player: Member = None):
 		embed.add_field(name=ctx.qc.gt("Flag grabs"), value=f"**{t.get('flagGrabs', 0)}**", inline=True)
 		hold_s = int((t.get('flagHoldMs', 0) or 0) / 1000)
 		embed.add_field(name=ctx.qc.gt("Flag hold"), value=f"**{hold_s // 60}m {hold_s % 60}s**", inline=True)
+	embed.add_field(
+		name="—",
+		value=ctx.qc.gt("See the full highlights of the month at {url}").format(url=cfg.SORACLE_API_URL),
+		inline=False
+	)
 	if target.display_avatar:
 		embed.set_thumbnail(url=target.display_avatar.url)
 	embed.set_footer(text="Soracle")
