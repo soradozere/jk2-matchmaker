@@ -618,6 +618,13 @@ async def _rebalance(
 ): await run_slash(bot.commands.rebalance, interaction=interaction)
 
 
+@dc.slash_command(name='preview', description='Privately preview a balance option (only you see it).', **guild_kwargs)
+async def _preview(
+		interaction: Interaction,
+		option: int = SlashOption(description='Which option to preview', choices={"Option 1": 1, "Option 2": 2, "Option 3": 3}),
+): await run_slash(bot.commands.balance_preview, interaction=interaction, option=option)
+
+
 @dc.slash_command(name='stats', description='Month-to-date JK2 stats from Soracle (caps, returns, K/D and more).', **guild_kwargs)
 async def _monthly_stats(
 		interaction: Interaction,

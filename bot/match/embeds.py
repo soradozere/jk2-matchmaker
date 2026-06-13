@@ -119,16 +119,9 @@ class Embeds:
 
 		return embed
 
-	def balance_menu(self, menu):
-		option = menu.option
+	def _balance_body(self, embed, option):
+		""" Shared label + team fields for a single balance option (live menu and preview). """
 		result = option.get('result') or {}
-		embed = Embed(
-			colour=Colour(0x50e3c2),
-			title=self.m.gt("__**{queue}** — suggested teams (option {n}/{total})__").format(
-				queue=self.m.queue.name[0].upper()+self.m.queue.name[1:],
-				n=menu.idx + 1, total=len(menu.options)
-			)
-		)
 		if option.get('label') or option.get('description'):
 			embed.description = " — ".join(filter(None, (
 				f"**{option['label']}**" if option.get('label') else None,
@@ -151,6 +144,29 @@ class Embeds:
 				value=" ​ ❲ ​ " + players + " ​ ❳",
 				inline=False
 			)
+
+	def balance_preview(self, menu, idx):
+		""" Private, single-option view (the /preview ephemeral response). No interactive bits. """
+		embed = Embed(
+			colour=Colour(0x50e3c2),
+			title=self.m.gt("__**{queue}** — option {n}/{total} (preview)__").format(
+				queue=self.m.queue.name[0].upper()+self.m.queue.name[1:],
+				n=idx + 1, total=len(menu.options)
+			)
+		)
+		self._balance_body(embed, menu.options[idx])
+		embed.set_footer(text=self.m.gt("Private preview — only captains' reactions on the public menu decide the teams."))
+		return embed
+
+	def balance_menu(self, menu):
+		embed = Embed(
+			colour=Colour(0x50e3c2),
+			title=self.m.gt("__**{queue}** — suggested teams (option {n}/{total})__").format(
+				queue=self.m.queue.name[0].upper()+self.m.queue.name[1:],
+				n=menu.idx + 1, total=len(menu.options)
+			)
+		)
+		self._balance_body(embed, menu.option)
 
 		approvers = menu.approvers
 		if approvers:

@@ -1,7 +1,7 @@
 __all__ = [
 	'show_matches', 'show_teams', 'set_ready', 'sub_me', 'sub_for', 'put',
 	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual',
-	'rebalance', 'remove_match_player'
+	'rebalance', 'remove_match_player', 'balance_preview'
 ]
 
 from nextcord import Member
@@ -89,6 +89,19 @@ async def remove_match_player(ctx, player: Member):
 	if (match := find(lambda m: m.qc == ctx.qc and player in m.players, bot.active_matches)) is None:
 		raise bot.Exc.NotFoundError(ctx.qc.gt("Specified user is not in a match."))
 	await match.remove_player(ctx, player)
+
+
+async def balance_preview(ctx, option: int):
+	""" Privately (ephemerally) show any balance option to a player in the match,
+		without changing the public menu. Slash-only — ephemeral needs an interaction. """
+	if (match := find(lambda m: m.qc == ctx.qc and ctx.author in m.players, bot.active_matches)) is None:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("You are not in an active match."))
+	if match.state != bot.Match.BALANCE or not match.balance_menu.options:
+		raise bot.Exc.MatchStateError(ctx.qc.gt("There is no balance menu open in your match right now."))
+	idx = option - 1
+	if not 0 <= idx < len(match.balance_menu.options):
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Pick an option between 1 and {n}.").format(n=len(match.balance_menu.options)))
+	await ctx.reply_dm(embed=match.embeds.balance_preview(match.balance_menu, idx))
 
 
 async def put(ctx, match_id: int, player: Member, team_name: str):
