@@ -92,12 +92,14 @@ async def remove_match_player(ctx, player: Member):
 
 
 async def balance_preview(ctx, option: int):
-	""" Privately (ephemerally) show any balance option to a player in the match,
+	""" Privately (ephemerally) show any balance option to anyone in the channel,
 		without changing the public menu. Slash-only — ephemeral needs an interaction. """
-	if (match := find(lambda m: m.qc == ctx.qc and ctx.author in m.players, bot.active_matches)) is None:
-		raise bot.Exc.NotFoundError(ctx.qc.gt("You are not in an active match."))
-	if match.state != bot.Match.BALANCE or not match.balance_menu.options:
-		raise bot.Exc.MatchStateError(ctx.qc.gt("There is no balance menu open in your match right now."))
+	match = find(
+		lambda m: m.qc == ctx.qc and m.state == bot.Match.BALANCE and m.balance_menu.options,
+		bot.active_matches
+	)
+	if match is None:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("There is no balance menu open in this channel right now."))
 	idx = option - 1
 	if not 0 <= idx < len(match.balance_menu.options):
 		raise bot.Exc.SyntaxError(ctx.qc.gt("Pick an option between 1 and {n}.").format(n=len(match.balance_menu.options)))
