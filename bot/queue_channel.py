@@ -69,6 +69,20 @@ class QueueChannel:
 				section="General",
 				description="Members with this role will be able to use the bot`s moderation commands."
 			),
+			VariableTable(
+				"admin_roles", display="Admin roles", section="General",
+				variables=[Variables.RoleVar("role")],
+				default=[],
+				blank=dict(role=None),
+				description="Extra roles with full admin access (in addition to the single Admin role above)."
+			),
+			VariableTable(
+				"moderator_roles", display="Moderator roles", section="General",
+				variables=[Variables.RoleVar("role")],
+				default=[],
+				blank=dict(role=None),
+				description="Extra roles with moderation access (in addition to the single Moderator role above)."
+			),
 			Variables.RoleVar(
 				"promotion_role",
 				display="Promotion role",

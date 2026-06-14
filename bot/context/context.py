@@ -47,11 +47,17 @@ class Context:
 	@property
 	def access_level(self):
 		""" Get the author permissions """
-		if (self.qc.cfg.admin_role in self.author.roles or
+		author_roles = set(self.author.roles)
+		admin_roles = {row['role'] for row in self.qc.cfg.admin_roles if row['role']}
+		admin_roles.add(self.qc.cfg.admin_role)
+		moderator_roles = {row['role'] for row in self.qc.cfg.moderator_roles if row['role']}
+		moderator_roles.add(self.qc.cfg.moderator_role)
+
+		if (author_roles & admin_roles or
 					self.author.id == cfg.DC_OWNER_ID or
 					self.channel.permissions_for(self.author).administrator):
 			return self.Perms.ADMIN
-		elif self.qc.cfg.moderator_role in self.author.roles:
+		elif author_roles & moderator_roles:
 			return self.Perms.MODERATOR
 		else:
 			return self.Perms.MEMBER
