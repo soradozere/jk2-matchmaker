@@ -189,9 +189,14 @@ class BalanceMenu:
 		if self.m.DRAFT in self.m.states:
 			self.m.states.remove(self.m.DRAFT)
 
-		await ctx.notice(self.m.gt("Suggestion **{n}** ({label}) accepted!").format(
+		msg = self.m.gt("Suggestion **{n}** ({label}) accepted!").format(
 			n=self.idx + 1, label=option.get('label') or "—"
-		))
+		)
+		if self.m.ranked:
+			msg += "\n" + self.m.gt("A captain can type {cmd} before reporting to redo the teams.").format(
+				cmd=f"`{self.m.qc.cfg.prefix}rebalance`"
+			)
+		await ctx.notice(msg)
 		await self.m.next_state(ctx)
 
 	async def go_manual(self, ctx):
@@ -206,9 +211,10 @@ class BalanceMenu:
 		await self.m.next_state(ctx)
 
 	async def reopen(self, ctx, author):
-		""" Return a drafting match to the balance menu (=rebalance). """
-		if self.m.state != self.m.DRAFT:
-			raise bot.Exc.MatchStateError(self.m.gt("The match is not on the draft stage."))
+		""" Return a match to the balance menu (=rebalance) — from manual picking,
+			or from the waiting-report stage after a timeout auto-accepted teams. """
+		if self.m.state not in (self.m.DRAFT, self.m.WAITING_REPORT):
+			raise bot.Exc.MatchStateError(self.m.gt("The match has already finished."))
 		if not (self.m.cfg['soracle_balance'] and self.m.cfg['pick_teams'] == "draft"):
 			raise bot.Exc.NotFoundError(self.m.gt("Soracle balancing is not enabled on this queue."))
 		# The menu buttons belong to whoever leads the teams NOW — a =capfor'd captain
@@ -225,8 +231,12 @@ class BalanceMenu:
 		if author not in self.m.captains[:2]:
 			ctx.check_perms(ctx.Perms.MODERATOR)
 
-		log.info(f"Match {self.m.id}: {get_nick(author)} reopened the balance menu")
-		self.m.states.insert(0, self.m.DRAFT)  # keep the draft as the fallback path again
+		log.info(f"Match {self.m.id}: {get_nick(author)} reopened the balance menu (from {self.m.state})")
+		# Rebuild the state queue: draft as the manual fallback, then waiting-report if ranked.
+		if self.m.state == self.m.WAITING_REPORT:
+			self.m.states = [self.m.DRAFT] + ([self.m.WAITING_REPORT] if self.m.ranked else [])
+		else:
+			self.m.states.insert(0, self.m.DRAFT)
 		self.m.state = self.m.BALANCE
 		await ctx.notice(self.m.gt("Returning to the Soracle balance suggestions..."))
 		await self.start(ctx)
