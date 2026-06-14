@@ -293,6 +293,15 @@ class Match:
 		else:
 			await self.final_message(ctx)
 
+	async def force_start(self, ctx):
+		""" Force a drafting match into the playing/waiting-report stage with the current
+			teams (e.g. deliberately uneven sides). Leftover unpicked players revert to queue. """
+		if self.state != self.DRAFT:
+			raise bot.Exc.MatchStateError(self.gt("The match is not on the draft stage."))
+		if not (len(self.teams[0]) and len(self.teams[1])):
+			raise bot.Exc.MatchStateError(self.gt("Both teams need at least one player to start."))
+		await self.next_state(ctx)
+
 	async def remove_player(self, ctx, member):
 		""" Moderator removal of a player from a drafting match (e.g. a 13+ force-start
 			where someone drops out). At 12 players the captains can =rebalance. """

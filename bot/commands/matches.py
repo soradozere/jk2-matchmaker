@@ -1,7 +1,7 @@
 __all__ = [
 	'show_matches', 'show_teams', 'set_ready', 'sub_me', 'sub_for', 'put',
 	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual',
-	'rebalance', 'remove_match_player', 'balance_preview'
+	'rebalance', 'remove_match_player', 'balance_preview', 'force_start_match'
 ]
 
 from nextcord import Member
@@ -89,6 +89,16 @@ async def remove_match_player(ctx, player: Member):
 	if (match := find(lambda m: m.qc == ctx.qc and player in m.players, bot.active_matches)) is None:
 		raise bot.Exc.NotFoundError(ctx.qc.gt("Specified user is not in a match."))
 	await match.remove_player(ctx, player)
+
+
+async def force_start_match(ctx):
+	ctx.check_perms(ctx.Perms.MODERATOR)
+	match = find(lambda m: m.qc == ctx.qc and ctx.author in m.players and m.state == bot.Match.DRAFT, bot.active_matches)
+	if match is None:
+		match = find(lambda m: m.qc == ctx.qc and m.state == bot.Match.DRAFT, bot.active_matches)
+	if match is None:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("No drafting match found on this channel."))
+	await match.force_start(ctx)
 
 
 async def balance_preview(ctx, option: int):

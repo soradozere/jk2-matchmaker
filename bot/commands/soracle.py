@@ -88,6 +88,13 @@ async def monthly_stats(ctx, player: Member = None):
 		embed.add_field(name=ctx.qc.gt("Flag grabs"), value=f"**{t.get('flagGrabs', 0)}**", inline=True)
 		hold_s = int((t.get('flagHoldMs', 0) or 0) / 1000)
 		embed.add_field(name=ctx.qc.gt("Flag hold"), value=f"**{hold_s // 60}m {hold_s % 60}s**", inline=True)
+		if form := data.get('form'):
+			form_emoji = {"W": "🟩", "L": "🟥", "D": "⬜"}
+			embed.add_field(
+				name=ctx.qc.gt("Form"),
+				value="".join(form_emoji.get(r, "⬜") for r in form[-15:]),
+				inline=False
+			)
 	embed.add_field(
 		name="—",
 		value=ctx.qc.gt("See the full highlights of the month at {url}").format(url=cfg.SORACLE_API_URL),

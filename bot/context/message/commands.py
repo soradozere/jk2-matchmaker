@@ -223,6 +223,11 @@ async def _pug_settings(ctx: MessageContext, args: str = None):
 	await bot.commands.pug_settings(ctx)
 
 
+@message_command('start_match', 'startmatch')
+async def _force_start_match(ctx: MessageContext, args: str = None):
+	await bot.commands.force_start_match(ctx)
+
+
 @message_command('remove_match_player', 'rmp')
 async def _remove_match_player(ctx: MessageContext, args: str = ""):
 	if not args or (member := await ctx.get_member(args.strip())) is None:

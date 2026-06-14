@@ -32,7 +32,7 @@ class Draft:
 	async def refresh(self, ctx):
 		if self.m.state != self.m.DRAFT:
 			await self.print(ctx)
-		elif len(self.m.teams[2]) and any((len(t) < self.m.cfg['team_size'] for t in self.m.teams)):
+		elif len(self.m.teams[2]) and any((len(t) < self.m.cfg['team_size'] for t in self.m.teams[:2])):
 			await self.print(ctx)
 		else:
 			await self.m.next_state(ctx)
