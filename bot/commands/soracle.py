@@ -92,7 +92,7 @@ async def monthly_stats(ctx, player: Member = None):
 			form_emoji = {"W": "🟩", "L": "🟥", "D": "⬜"}
 			embed.add_field(
 				name=ctx.qc.gt("Form"),
-				value="".join(form_emoji.get(r, "⬜") for r in form[-15:]),
+				value="".join(form_emoji.get(r, "⬜") for r in form[-5:]),
 				inline=False
 			)
 	embed.add_field(
