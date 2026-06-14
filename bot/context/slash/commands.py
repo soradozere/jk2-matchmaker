@@ -541,7 +541,7 @@ async def _sub_for(
 ): await run_slash(bot.commands.sub_for, interaction=interaction, player=player)
 
 
-@dc.slash_command(name='capme', description="Leave captain's position.")
+@dc.slash_command(name='capme', description="Leave captain's position.", **guild_kwargs)
 async def _cap_me(
 		interaction: Interaction,
 ): await run_slash(bot.commands.cap_me, interaction=interaction)
