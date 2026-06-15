@@ -197,6 +197,7 @@ class Embeds:
 			footer_lines.append(self.m.gt("Option **{n}** is auto-accepted after {duration}.").format(
 				n=menu.idx + 1, duration=duration
 			))
+		footer_lines.append(self.m.gt("Other players can use `/preview` to check the options while captains decide."))
 		embed.add_field(name="—", value="\n".join(footer_lines) + "\n​", inline=False)
 		embed.set_footer(**self.footer)
 

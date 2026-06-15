@@ -121,8 +121,17 @@ class BalanceMenu:
 			pass
 
 	async def process_reaction(self, reaction, user, remove=False):
-		if self.m.state != self.m.BALANCE:
+		# Reactions act as momentary buttons: we drop the user's reaction after reading it
+		# so a re-click always re-fires (Discord otherwise toggles an existing reaction off).
+		# Removals therefore carry no meaning.
+		if remove or self.m.state != self.m.BALANCE:
 			return
+
+		try:
+			await self.message.remove_reaction(reaction.emoji, user)
+		except DiscordException:
+			pass
+
 		approvers = self.approvers
 		if approvers and user not in approvers:
 			return
@@ -133,19 +142,15 @@ class BalanceMenu:
 		ctx = bot.SystemContext(self.m.qc)
 
 		if emoji == self.ACCEPT_EMOJI:
-			if remove:
-				self.accepts.discard(user)
-				await self.refresh()
+			self.accepts.add(user)
+			log.info(f"Match {self.m.id}: {get_nick(user)} accepted option {self.idx + 1} ({len(self.accepts)} accepts)")
+			# every approver must have accepted; with no captains configured, any two players
+			if (all(c in self.accepts for c in approvers) if approvers else len(self.accepts) >= 2):
+				await self.accept(ctx)
 			else:
-				self.accepts.add(user)
-				log.info(f"Match {self.m.id}: {get_nick(user)} accepted option {self.idx + 1} ({len(self.accepts)} accepts)")
-				# every approver must have accepted; with no captains configured, any two players
-				if (all(c in self.accepts for c in approvers) if approvers else len(self.accepts) >= 2):
-					await self.accept(ctx)
-				else:
-					await self.refresh()
+				await self.refresh()
 
-		elif emoji in self.OPTION_EMOJIS and not remove:
+		elif emoji in self.OPTION_EMOJIS:
 			new_idx = self.OPTION_EMOJIS.index(emoji)
 			if new_idx < len(self.options) and new_idx != self.idx:
 				self.idx = new_idx
@@ -153,7 +158,7 @@ class BalanceMenu:
 				log.info(f"Match {self.m.id}: {get_nick(user)} switched to option {self.idx + 1}")
 				await self.refresh()
 
-		elif emoji == self.MANUAL_EMOJI and not remove:
+		elif emoji == self.MANUAL_EMOJI:
 			log.info(f"Match {self.m.id}: {get_nick(user)} chose manual picks")
 			await self.go_manual(ctx)
 
