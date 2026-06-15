@@ -154,16 +154,6 @@ async def _start_queue(
 _start_queue.on_autocomplete("queue")(autocomplete.queues)
 
 
-@groups.admin_queue.subcommand(name='split', description='Split the queue into N separate matches.')
-async def _split_queue(
-	interaction: Interaction,
-	queue: str = SlashOption(),
-	group_size: int = SlashOption(description="Amount of players per match", required=False),
-	sort_by_rating: bool = SlashOption(description="Sort groups by players ratings", required=False)
-): await run_slash(bot.commands.split, interaction=interaction, queue=queue, group_size=group_size, sort_by_rating=sort_by_rating)
-_split_queue.on_autocomplete("queue")(autocomplete.queues)
-
-
 # channel -> ...
 
 @groups.admin_channel.subcommand(name='enable', description='Enable the bot on this channel.')
@@ -486,52 +476,10 @@ async def unsubscribe(
 unsubscribe.on_autocomplete("queues")(autocomplete.queues)
 
 
-@dc.slash_command(name='server', description='Show queue server.', **guild_kwargs)
-async def server(
-		interaction: Interaction,
-		queue: str
-): await run_slash(bot.commands.server, interaction=interaction, queue=queue)
-server.on_autocomplete("queue")(autocomplete.queues)
-
-
-@dc.slash_command(name='maps', description='List a queue maps.', **guild_kwargs)
-async def maps(
-		interaction: Interaction,
-		queue: str
-): await run_slash(bot.commands.maps, interaction=interaction, queue=queue, one=False)
-maps.on_autocomplete("queue")(autocomplete.queues)
-
-
-@dc.slash_command(name='map', description='Print a random map.', **guild_kwargs)
-async def _map(
-		interaction: Interaction,
-		queue: str
-): await run_slash(bot.commands.maps, interaction=interaction, queue=queue, one=True)
-_map.on_autocomplete("queue")(autocomplete.queues)
-
-
-@dc.slash_command(name='matches', description='Show active matches on the channel.', **guild_kwargs)
-async def _matches(
-		interaction: Interaction
-): await run_slash(bot.commands.show_matches, interaction=interaction)
-
-
 @dc.slash_command(name='teams', description='Show teams on your current match.', **guild_kwargs)
 async def _teams(
 		interaction: Interaction
 ): await run_slash(bot.commands.show_teams, interaction=interaction)
-
-
-@dc.slash_command(name='ready', description='Confirm participation during the check-in stage.', **guild_kwargs)
-async def _ready(
-		interaction: Interaction
-): await run_slash(bot.commands.set_ready, interaction=interaction, is_ready=True)
-
-
-@dc.slash_command(name='notready', description='Abort participation during the check-in stage.', **guild_kwargs)
-async def _not_ready(
-		interaction: Interaction
-): await run_slash(bot.commands.set_ready, interaction=interaction, is_ready=False)
 
 
 @dc.slash_command(name='subme', description='Request a substitute', **guild_kwargs)
@@ -659,19 +607,6 @@ async def _rating_unhide(
 ): await run_slash(bot.commands.rating_hide, interaction=interaction, player=player, hide=False)
 
 
-@dc.slash_command(name='auto_ready', description='Confirm next match check-in automatically.', **guild_kwargs)
-async def _auto_ready(
-		interaction: Interaction,
-		duration: str = SlashOption(required=False),
-):
-	async def _run(ctx, *args, _duration=None, **kwargs):
-		if _duration:
-			_duration = _parse_duration(ctx, _duration)
-		await bot.commands.auto_ready(ctx, *args, duration=_duration, **kwargs)
-
-	await run_slash(_run, interaction=interaction, _duration=duration)
-
-
 @dc.slash_command(name='expire', description='Set or show your current expire timer.', **guild_kwargs)
 async def _expire(
 		interaction: Interaction,
@@ -700,12 +635,6 @@ async def _default_expire(
 	await run_slash(_run, interaction=interaction, _duration=duration, afk=afk, clear=clear)
 
 
-@dc.slash_command(name='allow_offline', description='Switch your offline status immunity.', **guild_kwargs)
-async def _allow_offline(
-		interaction: Interaction,
-): await run_slash(bot.commands.allow_offline, interaction=interaction)
-
-
 @dc.slash_command(name='switch_dms', description='Toggles DMs on queue start.', **guild_kwargs)
 async def _switch_dms(
 		interaction: Interaction,
@@ -719,18 +648,16 @@ async def _cointoss(
 ): await run_slash(bot.commands.cointoss, interaction=interaction, side=side)
 
 
-@dc.slash_command(name='help', description='Show channel or queue help.', **guild_kwargs)
+@dc.slash_command(name='help', description='Show the everyday commands.', **guild_kwargs)
 async def _help(
 		interaction: Interaction,
-		queue: str = SlashOption(name="queue", required=False)
-): await run_slash(bot.commands.show_help, interaction=interaction, queue=queue)
-_help.on_autocomplete("queue")(autocomplete.queues)
+): await run_slash(bot.commands.commands_help, interaction=interaction)
 
 
-@dc.slash_command(name='commands', description='Show commands list.', **guild_kwargs)
+@dc.slash_command(name='commands', description='Show the everyday commands.', **guild_kwargs)
 async def _commands(
 		interaction: Interaction,
-): await interaction.response.send_message(cfg.COMMANDS_URL, ephemeral=True)
+): await run_slash(bot.commands.commands_help, interaction=interaction)
 
 
 @dc.slash_command(name='nick', description='Change your nickname with the rating prefix.', **guild_kwargs)

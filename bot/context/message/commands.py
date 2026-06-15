@@ -97,24 +97,9 @@ async def _queues(ctx: MessageContext, args: str = None):
 	await bot.commands.show_queues(ctx)
 
 
-@message_command('matches')
-async def _matches(ctx: MessageContext, args: str = None):
-	await bot.commands.show_matches(ctx)
-
-
 @message_command('teams')
 async def _teams(ctx: MessageContext, args: str = None):
 	await bot.commands.show_teams(ctx)
-
-
-@message_command('ready', 'r')
-async def _ready(ctx: MessageContext, args: str = None):
-	await bot.commands.set_ready(ctx, is_ready=True)
-
-
-@message_command('notready', 'nr')
-async def _not_ready(ctx: MessageContext, args: str = None):
-	await bot.commands.set_ready(ctx, is_ready=False)
 
 
 @message_command('subme')
@@ -172,11 +157,6 @@ async def _rc(ctx: MessageContext, args: str = None):
 	await bot.commands.report(ctx, result='abort')
 
 
-@message_command('allow_offline', 'ao')
-async def _ao(ctx: MessageContext, args: str = None):
-	await bot.commands.allow_offline(ctx)
-
-
 @message_command('expire')
 async def _expire(ctx: MessageContext, args: str = None):
 	duration = None
@@ -186,17 +166,6 @@ async def _expire(ctx: MessageContext, args: str = None):
 		except ValueError:
 			raise bot.Exc.SyntaxError(ctx.qc.gt("Invalid duration format. Syntax: 3h2m1s or 03:02:01."))
 	await bot.commands.expire(ctx, duration=duration)
-
-
-@message_command('auto_ready', 'ar')
-async def _auto_ready(ctx: MessageContext, args: str = None):
-	duration = None
-	if args:
-		try:
-			duration = parse_duration(args)
-		except ValueError:
-			raise bot.Exc.SyntaxError(ctx.qc.gt("Invalid duration format. Syntax: 3h2m1s or 03:02:01."))
-	await bot.commands.auto_ready(ctx, duration=duration)
 
 
 @message_command('rank')

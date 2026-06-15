@@ -1,8 +1,10 @@
-__all__ = ['auto_ready', 'expire', 'default_expire', 'allow_offline', 'switch_dms', 'cointoss', 'show_help', 'set_nick']
+__all__ = ['auto_ready', 'expire', 'default_expire', 'allow_offline', 'switch_dms', 'cointoss', 'show_help', 'set_nick', 'commands_help']
 
 from time import time
 from datetime import timedelta
 from random import randint
+
+from nextcord import Embed, Colour
 
 from core.utils import seconds_to_str, find
 from core.database import db
@@ -140,6 +142,38 @@ async def show_help(ctx, queue: str = None):
 		raise bot.Exc.SyntaxError(f"Queue '{queue}' not found on the channel.")
 
 	await ctx.reply_dm(q.cfg.description or ctx.qc.gt('Specified queue has no help answer set.'))
+
+
+async def commands_help(ctx, queue: str = None):
+	p = ctx.qc.cfg.prefix
+	embed = Embed(
+		title="JK2 Matchmaker — commands",
+		colour=Colour(0x7289DA),
+		description=f"Everyday commands work with the `{p}` prefix or as `/` slash commands."
+	)
+	embed.add_field(name="Queue", value="\n".join([
+		f"`{p}j` / `++` — join the queue",
+		f"`{p}l` / `--` — leave the queue",
+		f"`{p}who` — see who's in the queue",
+	]), inline=False)
+	embed.add_field(name="Match", value="\n".join([
+		f"`/preview <1-3>` — privately preview a balance option",
+		f"`{p}capfor <team>` — become a captain during manual picks",
+		f"`{p}p @player` — pick a player (captains)",
+		f"`{p}rl` — report a loss (losing captain)",
+		f"`{p}subme` · `{p}subfor @player` — substitutions",
+	]), inline=False)
+	embed.add_field(name="Stats & ranks", value="\n".join([
+		f"`{p}tier [@player]` — Soracle tier & roles",
+		f"`{p}stats [@player]` — month-to-date stats",
+		f"`{p}rank [@player]` — Elo rank profile",
+		f"`{p}lb` — leaderboard",
+	]), inline=False)
+	embed.add_field(name="JK2 servers", value="\n".join([
+		f"`{p}servers` — live server status",
+		f"`{p}pug` — toggle the pug ping role",
+	]), inline=False)
+	await ctx.reply_dm(embed=embed)
 
 
 async def set_nick(ctx, nick: str):
