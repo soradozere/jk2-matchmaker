@@ -586,6 +586,12 @@ async def _monthly_stats(
 ): await run_slash(bot.commands.monthly_stats, interaction=interaction, player=player)
 
 
+@dc.slash_command(name='dbs', description='Top 5 DBS killers this month.', **guild_kwargs)
+async def _dbs(
+		interaction: Interaction,
+): await run_slash(bot.commands.dbs_leaderboard, interaction=interaction)
+
+
 @dc.slash_command(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
 async def _tier(
 		interaction: Interaction,

@@ -225,6 +225,12 @@ class PickupQueue:
 				description="Users with this role may have preference in captains choosing process."
 			),
 			Variables.RoleVar(
+				"no_captain_role",
+				display="No-captain role",
+				section="Teams",
+				description="Users with this role are never auto-selected as captains (they can still volunteer with capfor)."
+			),
+			Variables.RoleVar(
 				"blacklist_role",
 				display="Blacklist role",
 				section="General",
@@ -358,6 +364,7 @@ class PickupQueue:
 			team_emojis=self.cfg.team_emojis.split(" ") if self.cfg.team_emojis else None,
 			ranked=self.cfg.ranked, pick_captains=self.cfg.pick_captains,
 			captains_role_id=self.cfg.captains_role.id if self.cfg.captains_role else None,
+			no_captain_role_id=self.cfg.no_captain_role.id if self.cfg.no_captain_role else None,
 			pick_teams=self.cfg.pick_teams, pick_order=self.cfg.pick_order,
 			soracle_balance=self.cfg.soracle_balance, soracle_balance_timeout=self.cfg.soracle_balance_timeout,
 			maps=[i['name'] for i in self.cfg.maps], vote_maps=self.cfg.vote_maps,

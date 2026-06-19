@@ -30,7 +30,7 @@ class Match:
 
 	default_cfg = dict(
 		teams=None, team_names=['Red', 'Blue'], team_emojis=['🔥', '💧'], ranked=False,
-		team_size=1, pick_captains="no captains", captains_role_id=None, pick_teams="draft",
+		team_size=1, pick_captains="no captains", captains_role_id=None, no_captain_role_id=None, pick_teams="draft",
 		pick_order=None, maps=[], vote_maps=0, map_count=0, check_in_timeout=0,
 		check_in_discard=True, check_in_discard_immediately=True, match_lifetime=3*60*60, start_msg=None, server=None,
 		show_streamers=True, soracle_balance=False, soracle_balance_timeout=3*60
@@ -199,17 +199,28 @@ class Match:
 			reverse=True
 		)
 
+	def captain_pool(self):
+		""" Players eligible for auto-captain selection — excludes no-captain-role holders,
+			unless that would leave fewer than two candidates (then everyone is eligible). """
+		excluded = self.cfg['no_captain_role_id']
+		if excluded:
+			eligible = [p for p in self.players if excluded not in [r.id for r in p.roles]]
+			if len(eligible) >= 2:
+				return eligible
+		return list(self.players)
+
 	def init_captains(self, pick_captains, captains_role_id):
+		pool = self.captain_pool()
 		if pick_captains == "by role and rating":
-			self.captains = self.sort_players(self.players)[:2]
+			self.captains = self.sort_players(pool)[:2]
 		elif pick_captains == "fair pairs":
-			candidates = sorted(self.players, key=lambda p: [self.ratings[p.id]], reverse=True)
+			candidates = sorted(pool, key=lambda p: [self.ratings[p.id]], reverse=True)
 			i = random.randrange(len(candidates) - 1)
 			self.captains = [candidates[i], candidates[i + 1]]
 		elif pick_captains == "random":
-			self.captains = random.sample(self.players, 2)
+			self.captains = random.sample(pool, 2)
 		elif pick_captains == "random with role preference":
-			rand = random.sample(self.players, len(self.players))
+			rand = random.sample(pool, len(pool))
 			self.captains = sorted(
 				rand, key=lambda p: self.cfg['captains_role_id'] in [role.id for role in p.roles], reverse=True
 			)[:2]

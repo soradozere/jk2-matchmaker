@@ -1,4 +1,4 @@
-__all__ = ['soracle_info', 'monthly_stats']
+__all__ = ['soracle_info', 'monthly_stats', 'dbs_leaderboard']
 
 from nextcord import Member, Embed, Colour
 
@@ -40,6 +40,27 @@ async def soracle_info(ctx, player: Member = None):
 	if target.display_avatar:
 		embed.set_thumbnail(url=target.display_avatar.url)
 	embed.set_footer(text="Soracle")
+	await ctx.reply(embed=embed)
+
+
+async def dbs_leaderboard(ctx):
+	try:
+		data = await soracle.fetch_stat_leaderboard('dbs_kills')
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	top = data.get('top') or []
+	embed = Embed(
+		title=f"Top DBS killers — {data.get('month', 'this month')}",
+		colour=Colour(0x50e3c2),
+		url=cfg.SORACLE_API_URL
+	)
+	if not top:
+		embed.description = ctx.qc.gt("No DBS kills recorded this month yet.")
+	else:
+		embed.description = "\n".join(
+			f"**{n + 1}.** {r['name']} — **{r['value']}**" for n, r in enumerate(top)
+		)
 	await ctx.reply(embed=embed)
 
 

@@ -77,7 +77,8 @@ class BalanceMenu:
 		self.idx = 0
 		self.accepts = set()
 		try:
-			self.message = await ctx.channel.send(embed=self.m.embeds.balance_menu(self))
+			pings = " ".join(p.mention for p in self.m.players)
+			self.message = await ctx.channel.send(content=pings, embed=self.m.embeds.balance_menu(self))
 		except DiscordException as e:
 			log.error(f"Match {self.m.id}: failed to post the balance menu: {str(e)}")
 			await self.m.next_state(ctx)

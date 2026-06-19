@@ -219,6 +219,11 @@ async def _monthly_stats(ctx: MessageContext, args: str = None):
 	await bot.commands.monthly_stats(ctx, player=member)
 
 
+@message_command('dbs')
+async def _dbs(ctx: MessageContext, args: str = None):
+	await bot.commands.dbs_leaderboard(ctx)
+
+
 @message_command('tier', 'soracle')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:
