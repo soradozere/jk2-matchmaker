@@ -4,6 +4,7 @@
 	and re-shown anytime via =wrapped. Both report the last completed month. """
 
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from nextcord import Embed, Colour, DiscordException
 
@@ -13,6 +14,8 @@ from core.client import dc
 from core.console import log
 
 CHECK_INTERVAL = 30 * 60  # how often the think loop re-checks the date
+PUBLISH_TZ = ZoneInfo("Europe/London")  # handles BST/GMT automatically
+PUBLISH_HOUR = 17  # 5pm UK on the 1st
 _next_check = 0
 
 
@@ -106,12 +109,16 @@ async def think(frame_time):
 		return
 	_next_check = frame_time + CHECK_INTERVAL
 
-	now = datetime.now(timezone.utc)
-	if now.day != 1:
-		return
+	now = datetime.now(PUBLISH_TZ)
 	month_key = now.strftime("%Y-%m")
 	if bot.wrapped_published == month_key:
-		return  # already posted this month's wrap
+		return  # already handled this month's wrap
+
+	# Publish once we're at/after the 1st of the (UK) month at 5pm. Using a target
+	# rather than "day == 1" means a brief outage over the 1st won't skip the month.
+	target = now.replace(day=1, hour=PUBLISH_HOUR, minute=0, second=0, microsecond=0)
+	if now < target:
+		return
 
 	year, month = _prev_month(now)
 	try:
