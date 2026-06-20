@@ -2,7 +2,7 @@ __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
 	'kills_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
-	'streaks_leaderboard', 'redblue', 'nemesis', 'wrapped'
+	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'wrapped'
 ]
 
 from math import ceil
@@ -213,6 +213,31 @@ async def nemesis(ctx, player: Member = None):
 	else:
 		embed.description = "**{opp}** has beaten you **{tw}** times this month (you've won **{mw}** vs them, {meet} meetings).".format(
 			opp=nem['name'], tw=nem['theirWins'], mw=nem['myWins'], meet=nem['meetings']
+		)
+	await ctx.reply(embed=embed)
+
+
+async def friend(ctx, player: Member = None):
+	target = ctx.author if not player else await ctx.get_member(player)
+	if not target:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+
+	try:
+		data = await soracle.fetch_friend(target.id)
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	if data is None:
+		raise bot.Exc.NotFoundError(
+			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
+		)
+
+	fr = data.get('friend')
+	embed = Embed(title=f"Best teammate — {data.get('name') or get_nick(target)}", colour=Colour(0x4ae24a), url=cfg.SORACLE_API_URL)
+	if not fr:
+		embed.description = ctx.qc.gt("No best teammate yet this month — not enough games alongside any one player.")
+	else:
+		embed.description = "You've won **{w}** games alongside **{name}** this month ({g} together, {l} lost).".format(
+			name=fr['name'], w=fr['wins'], g=fr['games'], l=fr['losses']
 		)
 	await ctx.reply(embed=embed)
 

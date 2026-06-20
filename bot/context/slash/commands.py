@@ -665,6 +665,13 @@ async def _nemesis(
 ): await run_slash(bot.commands.nemesis, interaction=interaction, player=player)
 
 
+@dc.slash_command(name='friend', description='The team-mate you have won the most games with this month.', **guild_kwargs)
+async def _friend(
+		interaction: Interaction,
+		player: Member = SlashOption(required=False, verify=False),
+): await run_slash(bot.commands.friend, interaction=interaction, player=player)
+
+
 @dc.slash_command(name='wrapped', description='The monthly Wrapped summary of awards.', **guild_kwargs)
 async def _wrapped(
 		interaction: Interaction,

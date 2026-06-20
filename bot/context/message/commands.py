@@ -289,6 +289,16 @@ async def _nemesis(ctx: MessageContext, args: str = None):
 	await bot.commands.nemesis(ctx, player=member)
 
 
+@message_command('friend')
+async def _friend(ctx: MessageContext, args: str = None):
+	if not args:
+		await bot.commands.friend(ctx, player=None)
+		return
+	if (member := await ctx.get_member(args)) is None:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+	await bot.commands.friend(ctx, player=member)
+
+
 @message_command('wrapped')
 async def _wrapped(ctx: MessageContext, args: str = None):
 	await bot.commands.wrapped(ctx)
