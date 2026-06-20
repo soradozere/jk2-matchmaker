@@ -111,10 +111,15 @@ async def potm(ctx):
 	else:
 		games = star.get('wins', 0) + star.get('losses', 0)
 		winrate = int(star['wins'] * 100 / games) if games else 0
-		embed.description = "## {name}\n**{w}W / {l}L** ({wr}% winrate) over {m} games\nUpset-weighted rating: **{s}**".format(
+		embed.description = "## {name}\n**{w}W / {l}L** ({wr}% winrate) over {m} games\nStar rating: **{s}**".format(
 			name=star['name'], w=star.get('wins', 0), l=star.get('losses', 0),
 			wr=winrate, m=star.get('matches', 0), s=star.get('avgScore', 0)
 		)
+		embed.set_footer(text=(
+			"Star rating = avg points per game: a win scores ~1 (more for beating a stronger "
+			"team, less when you were favourite), a loss scores 0. Rewards winning AND beating "
+			"tough opponents — not padding against weak teams."
+		))
 	await ctx.reply(embed=embed)
 
 
