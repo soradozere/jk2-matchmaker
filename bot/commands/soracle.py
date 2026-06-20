@@ -1,6 +1,8 @@
 __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
-	'kills_leaderboard', 'caps_leaderboard', 'potm', 'rivals'
+	'kills_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
+	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
+	'streaks_leaderboard', 'redblue', 'nemesis'
 ]
 
 from math import ceil
@@ -74,6 +76,14 @@ async def dfa_leaderboard(ctx):
 	await _stat_leaderboard(ctx, 'dfa_kills', "Top DFA killers")
 
 
+async def grabs_leaderboard(ctx):
+	await _stat_leaderboard(ctx, 'flag_grabs', "Top flag grabbers")
+
+
+async def bc_leaderboard(ctx):
+	await _stat_leaderboard(ctx, 'base_cleaner', "Top base cleaners")
+
+
 async def _monthly_players(ctx):
 	""" Fetch this month's aggregates and the 30%-of-matches qualifier threshold. """
 	try:
@@ -138,6 +148,66 @@ async def rivals(ctx):
 	await ctx.reply(embed=embed)
 
 
+async def streaks_leaderboard(ctx):
+	try:
+		data = await soracle.fetch_monthly_report()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	streaks = data.get('streaks') or []
+	embed = Embed(title=f"Longest win streaks — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	if not streaks:
+		embed.description = ctx.qc.gt("No win streaks yet this month.")
+	else:
+		embed.description = "\n".join(
+			f"**{i + 1}.** {s['name']} — **{s['streak']}** in a row" for i, s in enumerate(streaks)
+		)
+	await ctx.reply(embed=embed)
+
+
+async def redblue(ctx):
+	try:
+		data = await soracle.fetch_monthly_report()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	rb = data.get('redBlue') or {}
+	total = rb.get('total') or 0
+	embed = Embed(title=f"🔥 Red vs Blue 💧 — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	if not total:
+		embed.description = ctx.qc.gt("No matches recorded this month yet.")
+	else:
+		red, blue, draws = rb.get('redWins', 0), rb.get('blueWins', 0), rb.get('draws', 0)
+		embed.description = "🔥 Red: **{r}** ({rp}%)\n💧 Blue: **{b}** ({bp}%){d}\nover **{t}** matches".format(
+			r=red, rp=int(red * 100 / total), b=blue, bp=int(blue * 100 / total),
+			d=f"\n🤝 Draws: **{draws}**" if draws else "", t=total
+		)
+	await ctx.reply(embed=embed)
+
+
+async def nemesis(ctx, player: Member = None):
+	target = ctx.author if not player else await ctx.get_member(player)
+	if not target:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+
+	try:
+		data = await soracle.fetch_nemesis(target.id)
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	if data is None:
+		raise bot.Exc.NotFoundError(
+			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
+		)
+
+	nem = data.get('nemesis')
+	embed = Embed(title=f"Nemesis — {data.get('name') or get_nick(target)}", colour=Colour(0xe24b4a), url=cfg.SORACLE_API_URL)
+	if not nem:
+		embed.description = ctx.qc.gt("No nemesis yet this month — not enough games against any one opponent.")
+	else:
+		embed.description = "**{opp}** has beaten you **{tw}** times this month (you've won **{mw}** vs them, {meet} meetings).".format(
+			opp=nem['name'], tw=nem['theirWins'], mw=nem['myWins'], meet=nem['meetings']
+		)
+	await ctx.reply(embed=embed)
+
+
 async def kills_leaderboard(ctx):
 	data, players, _ = await _monthly_players(ctx)
 	top = sorted([p for p in players if p.get('kills')], key=lambda p: p['kills'], reverse=True)[:5]
@@ -149,6 +219,43 @@ async def kills_leaderboard(ctx):
 			"**{n}.** {name} — **{k}** kills (K/D {kd})".format(
 				n=i + 1, name=p['name'], k=p['kills'],
 				kd=f"{p['kills'] / p['deaths']:.2f}" if p.get('deaths') else "∞"
+			) for i, p in enumerate(top)
+		)
+	await ctx.reply(embed=embed)
+
+
+async def flaghold_leaderboard(ctx):
+	data, players, _ = await _monthly_players(ctx)
+	top = sorted([p for p in players if p.get('flagHoldMs')], key=lambda p: p['flagHoldMs'], reverse=True)[:5]
+	embed = Embed(title=f"Most flag hold — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	if not top:
+		embed.description = ctx.qc.gt("No flag hold recorded this month yet.")
+	else:
+		def fmt(ms):
+			s = int(ms / 1000)
+			return f"{s // 60}m {s % 60}s"
+		embed.description = "\n".join(
+			f"**{i + 1}.** {p['name']} — **{fmt(p['flagHoldMs'])}**" for i, p in enumerate(top)
+		)
+	await ctx.reply(embed=embed)
+
+
+async def returns_leaderboard(ctx):
+	# Returns per minute played (time_played is in minutes). 30%-of-matches qualifier
+	# so a one-game fluke can't top it.
+	data, players, min_matches = await _monthly_players(ctx)
+	eligible = [
+		p for p in players
+		if p.get('matches', 0) >= min_matches and p.get('returns') and p.get('timePlayed')
+	]
+	top = sorted(eligible, key=lambda p: p['returns'] / p['timePlayed'], reverse=True)[:5]
+	embed = Embed(title=f"Top returners — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	if not top:
+		embed.description = ctx.qc.gt("Not enough returns data this month yet.")
+	else:
+		embed.description = "\n".join(
+			"**{n}.** {name} — **{r:.2f}**/min ({tot} returns)".format(
+				n=i + 1, name=p['name'], r=p['returns'] / p['timePlayed'], tot=p['returns']
 			) for i, p in enumerate(top)
 		)
 	await ctx.reply(embed=embed)

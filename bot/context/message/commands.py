@@ -249,6 +249,46 @@ async def _rivals(ctx: MessageContext, args: str = None):
 	await bot.commands.rivals(ctx)
 
 
+@message_command('grabs')
+async def _grabs(ctx: MessageContext, args: str = None):
+	await bot.commands.grabs_leaderboard(ctx)
+
+
+@message_command('bc')
+async def _bc(ctx: MessageContext, args: str = None):
+	await bot.commands.bc_leaderboard(ctx)
+
+
+@message_command('flaghold')
+async def _flaghold(ctx: MessageContext, args: str = None):
+	await bot.commands.flaghold_leaderboard(ctx)
+
+
+@message_command('returns')
+async def _returns(ctx: MessageContext, args: str = None):
+	await bot.commands.returns_leaderboard(ctx)
+
+
+@message_command('streak', 'streaks')
+async def _streak(ctx: MessageContext, args: str = None):
+	await bot.commands.streaks_leaderboard(ctx)
+
+
+@message_command('redblue')
+async def _redblue(ctx: MessageContext, args: str = None):
+	await bot.commands.redblue(ctx)
+
+
+@message_command('nemesis')
+async def _nemesis(ctx: MessageContext, args: str = None):
+	if not args:
+		await bot.commands.nemesis(ctx, player=None)
+		return
+	if (member := await ctx.get_member(args)) is None:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+	await bot.commands.nemesis(ctx, player=member)
+
+
 @message_command('tier', 'soracle')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:

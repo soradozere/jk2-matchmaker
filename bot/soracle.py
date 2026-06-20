@@ -57,6 +57,16 @@ async def fetch_player_stats(discord_id):
 	return data
 
 
+async def fetch_nemesis(discord_id):
+	""" A player's worst head-to-head this month, or None if unlinked. """
+	status, data = await _request('GET', f"/api/bot/nemesis/by-discord/{discord_id}")
+	if status == 404:
+		return None
+	if status != 200 or data is None:
+		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+	return data
+
+
 async def fetch_monthly_report():
 	""" Star player + rivalries for the current month: dict(month, starPlayer, rivalries). """
 	status, data = await _request('GET', "/api/bot/monthly-report")

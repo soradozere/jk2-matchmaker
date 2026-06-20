@@ -622,6 +622,49 @@ async def _rivals(
 ): await run_slash(bot.commands.rivals, interaction=interaction)
 
 
+@dc.slash_command(name='grabs', description='Top 5 flag grabbers this month.', **guild_kwargs)
+async def _grabs(
+		interaction: Interaction,
+): await run_slash(bot.commands.grabs_leaderboard, interaction=interaction)
+
+
+@dc.slash_command(name='bc', description='Top 5 base cleaners this month.', **guild_kwargs)
+async def _bc(
+		interaction: Interaction,
+): await run_slash(bot.commands.bc_leaderboard, interaction=interaction)
+
+
+@dc.slash_command(name='flaghold', description='Top 5 by flag hold time this month.', **guild_kwargs)
+async def _flaghold(
+		interaction: Interaction,
+): await run_slash(bot.commands.flaghold_leaderboard, interaction=interaction)
+
+
+@dc.slash_command(name='returns', description='Top 5 returners (per minute) this month.', **guild_kwargs)
+async def _returns(
+		interaction: Interaction,
+): await run_slash(bot.commands.returns_leaderboard, interaction=interaction)
+
+
+@dc.slash_command(name='streak', description='Longest win streaks this month.', **guild_kwargs)
+async def _streak(
+		interaction: Interaction,
+): await run_slash(bot.commands.streaks_leaderboard, interaction=interaction)
+
+
+@dc.slash_command(name='redblue', description='Red vs Blue win split this month.', **guild_kwargs)
+async def _redblue(
+		interaction: Interaction,
+): await run_slash(bot.commands.redblue, interaction=interaction)
+
+
+@dc.slash_command(name='nemesis', description='The opponent who has beaten you most this month.', **guild_kwargs)
+async def _nemesis(
+		interaction: Interaction,
+		player: Member = SlashOption(required=False, verify=False),
+): await run_slash(bot.commands.nemesis, interaction=interaction, player=player)
+
+
 @dc.slash_command(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
 async def _tier(
 		interaction: Interaction,
