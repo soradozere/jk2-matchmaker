@@ -42,6 +42,11 @@ class BalanceMenu:
 		return self.options[self.idx]
 
 	async def start(self, ctx):
+		# Disarm the auto-accept timer until the menu is fully posted. A reopened
+		# menu (=rebalance) still holds the previous run's started_at, so without
+		# this the think() loop would auto-accept mid-setup — deleting the message
+		# we're still adding reactions to, which crashes on self.message.delete().
+		self.started_at = None
 		if len(self.m.players) > 12:
 			await ctx.notice("\n".join((
 				self.m.gt("Soracle balancing supports 12 players — proceeding to manual picks."),
@@ -89,11 +94,12 @@ class BalanceMenu:
 		except DiscordException as e:
 			# usually missing Add Reactions or Read Message History on the channel
 			log.error(f"Match {self.m.id}: failed to add menu reactions: {str(e)}")
-			try:
-				await self.message.delete()
-			except DiscordException:
-				pass
-			self.message = None
+			if self.message is not None:
+				try:
+					await self.message.delete()
+				except DiscordException:
+					pass
+				self.message = None
 			try:
 				await ctx.notice(self.m.gt(
 					"I lack channel permissions to run the balance menu (Add Reactions / Read Message History), "
