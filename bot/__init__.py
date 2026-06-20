@@ -13,6 +13,7 @@ from .stats import stats
 from .stats.noadds import noadds
 from .exceptions import Exceptions as Exc
 from . import jk2_servers
+from . import wrapped
 from .context import Context, SlashContext, SystemContext
 from . import commands
 
@@ -27,6 +28,7 @@ active_matches = []
 waiting_reactions = dict()  # {message.id: function}
 allow_offline = []  # [user_id]
 auto_ready = dict()  # {user.id: timestamp}
+wrapped_published = None  # "YYYY-MM" of the last auto-published monthly wrap
 
 
 def background_context(coro):

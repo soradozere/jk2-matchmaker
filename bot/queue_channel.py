@@ -119,6 +119,14 @@ class QueueChannel:
 				notnull=True,
 				description="Ping the @pug role in this channel when a watched JK2 server crosses the player threshold."
 			),
+			Variables.BoolVar(
+				"wrapped_channel",
+				display="Monthly wrap channel",
+				section="General",
+				default=0,
+				notnull=True,
+				description="Auto-post the monthly Wrapped summary here on the 1st (pings @everyone)."
+			),
 			Variables.DurationVar(
 				"expire_time",
 				display="Auto remove on timer after last !add command",

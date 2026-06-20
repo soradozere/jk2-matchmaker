@@ -665,6 +665,12 @@ async def _nemesis(
 ): await run_slash(bot.commands.nemesis, interaction=interaction, player=player)
 
 
+@dc.slash_command(name='wrapped', description='The monthly Wrapped summary of awards.', **guild_kwargs)
+async def _wrapped(
+		interaction: Interaction,
+): await run_slash(bot.commands.wrapped, interaction=interaction)
+
+
 @dc.slash_command(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
 async def _tier(
 		interaction: Interaction,

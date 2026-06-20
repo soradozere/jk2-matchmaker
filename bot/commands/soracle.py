@@ -2,7 +2,7 @@ __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
 	'kills_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
-	'streaks_leaderboard', 'redblue', 'nemesis'
+	'streaks_leaderboard', 'redblue', 'nemesis', 'wrapped'
 ]
 
 from math import ceil
@@ -151,6 +151,10 @@ async def rivals(ctx):
 			lines.append(f"**{i + 1}.** {p1} vs {p2} — faced **{count}** times · {standing}")
 		embed.description = "\n".join(lines)
 	await ctx.reply(embed=embed)
+
+
+async def wrapped(ctx):
+	await bot.wrapped.show(ctx)
 
 
 async def streaks_leaderboard(ctx):

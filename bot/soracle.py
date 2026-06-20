@@ -67,17 +67,21 @@ async def fetch_nemesis(discord_id):
 	return data
 
 
-async def fetch_monthly_report():
-	""" Star player + rivalries for the current month: dict(month, starPlayer, rivalries). """
-	status, data = await _request('GET', "/api/bot/monthly-report")
+def _month_qs(year, month):
+	return f"?year={year}&month={month}" if year and month else ""
+
+
+async def fetch_monthly_report(year=None, month=None):
+	""" Star player + rivalries for a month (default current): dict(month, starPlayer, rivalries, ...). """
+	status, data = await _request('GET', "/api/bot/monthly-report" + _month_qs(year, month))
 	if status != 200 or data is None:
 		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
 	return data
 
 
-async def fetch_monthly_aggregates():
-	""" Per-player summed stats for the current month: dict(month, matchCount, players=[...]). """
-	status, data = await _request('GET', "/api/bot/monthly-aggregates")
+async def fetch_monthly_aggregates(year=None, month=None):
+	""" Per-player summed stats for a month (default current): dict(month, matchCount, players=[...]). """
+	status, data = await _request('GET', "/api/bot/monthly-aggregates" + _month_qs(year, month))
 	if status != 200 or data is None:
 		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
 	return data

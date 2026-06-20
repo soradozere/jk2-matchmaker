@@ -64,7 +64,10 @@ def save_state():
 		matches.append(match.serialize())
 
 	f = open("saved_state.json", 'w')
-	f.write(json.dumps(dict(queues=queues, matches=matches, allow_offline=bot.allow_offline, expire=bot.expire.serialize())))
+	f.write(json.dumps(dict(
+		queues=queues, matches=matches, allow_offline=bot.allow_offline,
+		expire=bot.expire.serialize(), wrapped_published=bot.wrapped_published
+	)))
 	f.close()
 
 
@@ -78,6 +81,7 @@ async def load_state():
 	log.info("Loading state...")
 
 	bot.allow_offline = list(data['allow_offline'])
+	bot.wrapped_published = data.get('wrapped_published')
 
 	for qd in data['queues']:
 		if qd.get('queue_type') in ['PickupQueue', None]:

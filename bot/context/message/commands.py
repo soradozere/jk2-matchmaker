@@ -289,6 +289,11 @@ async def _nemesis(ctx: MessageContext, args: str = None):
 	await bot.commands.nemesis(ctx, player=member)
 
 
+@message_command('wrapped')
+async def _wrapped(ctx: MessageContext, args: str = None):
+	await bot.commands.wrapped(ctx)
+
+
 @message_command('tier', 'soracle')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:
