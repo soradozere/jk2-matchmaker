@@ -1,4 +1,7 @@
-__all__ = ['soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard', 'kills_leaderboard', 'caps_leaderboard']
+__all__ = [
+	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
+	'kills_leaderboard', 'caps_leaderboard', 'potm', 'rivals'
+]
 
 from math import ceil
 
@@ -79,6 +82,60 @@ async def _monthly_players(ctx):
 		raise bot.Exc.NotFoundError(str(e))
 	min_matches = max(1, ceil((data.get('matchCount') or 0) * 0.3))
 	return data, data.get('players') or [], min_matches
+
+
+async def potm(ctx):
+	try:
+		data = await soracle.fetch_monthly_report()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	star = data.get('starPlayer')
+	embed = Embed(
+		title=f"⭐ Star Player of the Month — {data.get('month', 'this month')}",
+		colour=Colour(0xf1c40f),
+		url=cfg.SORACLE_API_URL
+	)
+	if not star:
+		embed.description = ctx.qc.gt("No qualifying player yet this month.")
+	else:
+		games = star.get('wins', 0) + star.get('losses', 0)
+		winrate = int(star['wins'] * 100 / games) if games else 0
+		embed.description = "## {name}\n**{w}W / {l}L** ({wr}% winrate) over {m} games\nUpset-weighted rating: **{s}**".format(
+			name=star['name'], w=star.get('wins', 0), l=star.get('losses', 0),
+			wr=winrate, m=star.get('matches', 0), s=star.get('avgScore', 0)
+		)
+	await ctx.reply(embed=embed)
+
+
+async def rivals(ctx):
+	try:
+		data = await soracle.fetch_monthly_report()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	rivalries = data.get('rivalries') or []
+	embed = Embed(
+		title=f"Top rivalries — {data.get('month', 'this month')}",
+		colour=Colour(0x50e3c2),
+		url=cfg.SORACLE_API_URL
+	)
+	if not rivalries:
+		embed.description = ctx.qc.gt("No rivalries have formed yet this month.")
+	else:
+		lines = []
+		for i, r in enumerate(rivalries):
+			p1, p2, count, p1w = r['player1'], r['player2'], r['count'], r['player1Wins']
+			p2w = count - p1w
+			if p1w > p2w:
+				standing = f"{p1} leads **{p1w}–{p2w}**"
+			elif p2w > p1w:
+				standing = f"{p2} leads **{p2w}–{p1w}**"
+			else:
+				standing = f"all square **{p1w}–{p2w}**"
+			lines.append(f"**{i + 1}.** {p1} vs {p2} — faced **{count}** times · {standing}")
+		embed.description = "\n".join(lines)
+	await ctx.reply(embed=embed)
 
 
 async def kills_leaderboard(ctx):

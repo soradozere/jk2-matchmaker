@@ -239,6 +239,16 @@ async def _caps(ctx: MessageContext, args: str = None):
 	await bot.commands.caps_leaderboard(ctx)
 
 
+@message_command('potm')
+async def _potm(ctx: MessageContext, args: str = None):
+	await bot.commands.potm(ctx)
+
+
+@message_command('rivals')
+async def _rivals(ctx: MessageContext, args: str = None):
+	await bot.commands.rivals(ctx)
+
+
 @message_command('tier', 'soracle')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:

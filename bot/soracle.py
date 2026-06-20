@@ -57,6 +57,14 @@ async def fetch_player_stats(discord_id):
 	return data
 
 
+async def fetch_monthly_report():
+	""" Star player + rivalries for the current month: dict(month, starPlayer, rivalries). """
+	status, data = await _request('GET', "/api/bot/monthly-report")
+	if status != 200 or data is None:
+		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+	return data
+
+
 async def fetch_monthly_aggregates():
 	""" Per-player summed stats for the current month: dict(month, matchCount, players=[...]). """
 	status, data = await _request('GET', "/api/bot/monthly-aggregates")

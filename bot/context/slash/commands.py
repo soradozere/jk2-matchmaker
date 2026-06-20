@@ -610,6 +610,18 @@ async def _caps(
 ): await run_slash(bot.commands.caps_leaderboard, interaction=interaction)
 
 
+@dc.slash_command(name='potm', description='Star Player of the Month.', **guild_kwargs)
+async def _potm(
+		interaction: Interaction,
+): await run_slash(bot.commands.potm, interaction=interaction)
+
+
+@dc.slash_command(name='rivals', description='Top rivalries of the month.', **guild_kwargs)
+async def _rivals(
+		interaction: Interaction,
+): await run_slash(bot.commands.rivals, interaction=interaction)
+
+
 @dc.slash_command(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
 async def _tier(
 		interaction: Interaction,
