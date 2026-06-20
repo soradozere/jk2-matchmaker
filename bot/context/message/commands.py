@@ -224,6 +224,21 @@ async def _dbs(ctx: MessageContext, args: str = None):
 	await bot.commands.dbs_leaderboard(ctx)
 
 
+@message_command('dfa')
+async def _dfa(ctx: MessageContext, args: str = None):
+	await bot.commands.dfa_leaderboard(ctx)
+
+
+@message_command('kills')
+async def _kills(ctx: MessageContext, args: str = None):
+	await bot.commands.kills_leaderboard(ctx)
+
+
+@message_command('caps')
+async def _caps(ctx: MessageContext, args: str = None):
+	await bot.commands.caps_leaderboard(ctx)
+
+
 @message_command('tier', 'soracle')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:

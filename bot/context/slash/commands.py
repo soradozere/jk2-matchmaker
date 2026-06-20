@@ -592,6 +592,24 @@ async def _dbs(
 ): await run_slash(bot.commands.dbs_leaderboard, interaction=interaction)
 
 
+@dc.slash_command(name='dfa', description='Top 5 DFA killers this month.', **guild_kwargs)
+async def _dfa(
+		interaction: Interaction,
+): await run_slash(bot.commands.dfa_leaderboard, interaction=interaction)
+
+
+@dc.slash_command(name='kills', description='Top 5 fraggers this month (with K/D).', **guild_kwargs)
+async def _kills(
+		interaction: Interaction,
+): await run_slash(bot.commands.kills_leaderboard, interaction=interaction)
+
+
+@dc.slash_command(name='caps', description='Top 5 most caps per run this month.', **guild_kwargs)
+async def _caps(
+		interaction: Interaction,
+): await run_slash(bot.commands.caps_leaderboard, interaction=interaction)
+
+
 @dc.slash_command(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
 async def _tier(
 		interaction: Interaction,

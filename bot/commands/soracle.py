@@ -1,4 +1,6 @@
-__all__ = ['soracle_info', 'monthly_stats', 'dbs_leaderboard']
+__all__ = ['soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard', 'kills_leaderboard', 'caps_leaderboard']
+
+from math import ceil
 
 from nextcord import Member, Embed, Colour
 
@@ -43,23 +45,76 @@ async def soracle_info(ctx, player: Member = None):
 	await ctx.reply(embed=embed)
 
 
-async def dbs_leaderboard(ctx):
+async def _stat_leaderboard(ctx, stat, title, unit=""):
+	""" Simple top-5-by-summed-stat board (=dbs, =dfa). """
 	try:
-		data = await soracle.fetch_stat_leaderboard('dbs_kills')
+		data = await soracle.fetch_stat_leaderboard(stat)
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 
 	top = data.get('top') or []
-	embed = Embed(
-		title=f"Top DBS killers — {data.get('month', 'this month')}",
-		colour=Colour(0x50e3c2),
-		url=cfg.SORACLE_API_URL
-	)
+	embed = Embed(title=f"{title} — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
 	if not top:
-		embed.description = ctx.qc.gt("No DBS kills recorded this month yet.")
+		embed.description = ctx.qc.gt("Nothing recorded this month yet.")
 	else:
 		embed.description = "\n".join(
-			f"**{n + 1}.** {r['name']} — **{r['value']}**" for n, r in enumerate(top)
+			f"**{n + 1}.** {r['name']} — **{r['value']}**{unit}" for n, r in enumerate(top)
+		)
+	await ctx.reply(embed=embed)
+
+
+async def dbs_leaderboard(ctx):
+	await _stat_leaderboard(ctx, 'dbs_kills', "Top DBS killers")
+
+
+async def dfa_leaderboard(ctx):
+	await _stat_leaderboard(ctx, 'dfa_kills', "Top DFA killers")
+
+
+async def _monthly_players(ctx):
+	""" Fetch this month's aggregates and the 30%-of-matches qualifier threshold. """
+	try:
+		data = await soracle.fetch_monthly_aggregates()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	min_matches = max(1, ceil((data.get('matchCount') or 0) * 0.3))
+	return data, data.get('players') or [], min_matches
+
+
+async def kills_leaderboard(ctx):
+	data, players, _ = await _monthly_players(ctx)
+	top = sorted([p for p in players if p.get('kills')], key=lambda p: p['kills'], reverse=True)[:5]
+	embed = Embed(title=f"Top fraggers — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	if not top:
+		embed.description = ctx.qc.gt("No kills recorded this month yet.")
+	else:
+		embed.description = "\n".join(
+			"**{n}.** {name} — **{k}** kills (K/D {kd})".format(
+				n=i + 1, name=p['name'], k=p['kills'],
+				kd=f"{p['kills'] / p['deaths']:.2f}" if p.get('deaths') else "∞"
+			) for i, p in enumerate(top)
+		)
+	await ctx.reply(embed=embed)
+
+
+async def caps_leaderboard(ctx):
+	# Caps efficiency: minutes of flag hold per cap (lower = better). Matches Soracle's
+	# "Most Caps per Run": regular cappers only (caps >= 40% of the month's max) plus the
+	# 30%-of-matches qualifier.
+	data, players, min_matches = await _monthly_players(ctx)
+	qualified = [p for p in players if p.get('matches', 0) >= min_matches]
+	max_caps = max((p.get('captures', 0) for p in qualified), default=0)
+	floor = max_caps * 0.4
+	eligible = [p for p in qualified if p.get('captures', 0) >= floor and p.get('captures') and p.get('flagHoldMs')]
+	top = sorted(eligible, key=lambda p: p['flagHoldMs'] / p['captures'])[:5]
+	embed = Embed(title=f"Most caps per run — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	if not top:
+		embed.description = ctx.qc.gt("Not enough capping data this month yet.")
+	else:
+		embed.description = "\n".join(
+			"**{n}.** {name} — 1 cap / **{m:.1f} min** ({c} caps)".format(
+				n=i + 1, name=p['name'], m=p['flagHoldMs'] / 60000 / p['captures'], c=p['captures']
+			) for i, p in enumerate(top)
 		)
 	await ctx.reply(embed=embed)
 
