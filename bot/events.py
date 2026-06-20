@@ -5,6 +5,7 @@ from core.client import dc
 from core.console import log
 from core.config import cfg
 import bot
+from bot import soracle
 
 
 @dc.event
@@ -33,6 +34,44 @@ async def on_think(frame_time):
 	await bot.wrapped.think(frame_time)
 
 
+# Forward end-of-match scoreboard CSVs posted in a watched channel to Soracle's
+# approval queue. No Discord feedback by design — admins review on the site;
+# outcomes (queued / skipped / errors) go to the bot log only.
+#
+# A channel is watched if it's listed in cfg.SCOREBOARD_CHANNELS (a plain,
+# dedicated channel — no pubobot-enable needed) OR it's a pubobot channel with
+# the 'scoreboard_watch' setting on.
+def _is_scoreboard_channel(message):
+	if message.channel.id in getattr(cfg, 'SCOREBOARD_CHANNELS', []):
+		return True
+	qc = bot.queue_channels.get(message.channel.id)
+	return qc is not None and getattr(qc.cfg, 'scoreboard_watch', False)
+
+
+async def handle_scoreboard_attachments(message):
+	if not _is_scoreboard_channel(message):
+		return
+
+	for attachment in message.attachments:
+		if not attachment.filename.lower().endswith('.csv'):
+			continue
+		try:
+			csv_bytes = await attachment.read()
+			status, data = await soracle.upload_scoreboard(
+				csv_bytes, attachment.filename,
+				guild_id=message.guild.id if message.guild else None,
+				channel_id=message.channel.id,
+				message_id=message.id,
+				user_id=message.author.id,
+				username=str(message.author),
+			)
+			log.info(f"Scoreboard '{attachment.filename}' -> Soracle: HTTP {status} {data}")
+		except soracle.SoracleError as e:
+			log.error(f"Failed to upload scoreboard '{attachment.filename}' to Soracle: {e}")
+		except Exception as e:
+			log.error(f"Unexpected error uploading scoreboard '{attachment.filename}': {e}")
+
+
 @dc.event
 async def on_message(message):
 	if message.channel.type == ChannelType.private and message.author.id != dc.user.id:
@@ -45,6 +84,9 @@ async def on_message(message):
 		await bot.enable_channel(message)
 	elif message.content == '!disable_pubobot':
 		await bot.disable_channel(message)
+
+	if message.attachments and message.author.id != dc.user.id:
+		await handle_scoreboard_attachments(message)
 
 
 @dc.event

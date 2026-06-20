@@ -127,6 +127,14 @@ class QueueChannel:
 				notnull=True,
 				description="Auto-post the monthly Wrapped summary here on the 1st (pings @everyone)."
 			),
+			Variables.BoolVar(
+				"scoreboard_watch",
+				display="Scoreboard CSV watch",
+				section="General",
+				default=0,
+				notnull=True,
+				description="Upload end-of-match scoreboard .csv attachments posted here to Soracle's approval queue."
+			),
 			Variables.DurationVar(
 				"expire_time",
 				display="Auto remove on timer after last !add command",

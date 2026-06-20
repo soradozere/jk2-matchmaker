@@ -8,6 +8,9 @@ import aiohttp
 from core.config import cfg
 
 TIMEOUT = aiohttp.ClientTimeout(total=5)
+# Scoreboard uploads do more work server-side (parse, resolve names, store CSV),
+# so they get a longer budget than the read-only calls.
+UPLOAD_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 
 class SoracleError(Exception):
@@ -28,6 +31,42 @@ async def _request(method, path, json_body=None):
 	try:
 		async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
 			async with session.request(method, url, headers=headers, json=json_body) as resp:
+				try:
+					data = await resp.json(content_type=None)
+				except ValueError:
+					data = None
+				return resp.status, data
+	except (aiohttp.ClientError, asyncio.TimeoutError):
+		raise SoracleError("Could not reach Soracle.")
+
+
+async def upload_scoreboard(csv_bytes, filename, *, guild_id=None, channel_id=None,
+                            message_id=None, user_id=None, username=None):
+	""" Upload an end-of-match scoreboard CSV to Soracle's approval queue.
+
+		Returns (status, data): on success status 200 with data like
+		{pending_id, distinct, matched, unmatched}, or {skipped: True, reason}
+		for sub-12-player games, or {duplicate: True} on a repeat of the same
+		Discord message. Raises SoracleError if Soracle is unreachable. """
+	url = cfg.SORACLE_API_URL + "/api/bot/scoreboard"
+	headers = {'Authorization': f"Bearer {cfg.SORACLE_API_SECRET}"}
+
+	form = aiohttp.FormData()
+	form.add_field('file', csv_bytes, filename=filename, content_type='text/csv')
+	for key, value in (
+		('filename', filename),
+		('guild_id', guild_id),
+		('channel_id', channel_id),
+		('message_id', message_id),
+		('user_id', user_id),
+		('username', username),
+	):
+		if value is not None:
+			form.add_field(key, str(value))
+
+	try:
+		async with aiohttp.ClientSession(timeout=UPLOAD_TIMEOUT) as session:
+			async with session.post(url, headers=headers, data=form) as resp:
 				try:
 					data = await resp.json(content_type=None)
 				except ValueError:
