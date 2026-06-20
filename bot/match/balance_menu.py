@@ -206,7 +206,7 @@ class BalanceMenu:
 		await self.m.next_state(ctx)
 
 	async def go_manual(self, ctx):
-		if not await self.close_menu():
+		if not await self.close_menu(keep=True):
 			return
 		await ctx.notice("\n".join((
 			self.m.gt("Proceeding to manual team picking."),
@@ -247,15 +247,19 @@ class BalanceMenu:
 		await ctx.notice(self.m.gt("Returning to the Soracle balance suggestions..."))
 		await self.start(ctx)
 
-	async def close_menu(self):
+	async def close_menu(self, keep=False):
 		""" Returns True for the single caller that actually closed the menu.
-			No await before self.message is cleared, so this is race-free on the event loop. """
+			No await before self.message is cleared, so this is race-free on the event loop.
+			keep=True leaves the message in chat as a record (reactions stripped) instead of deleting. """
 		if (message := self.message) is None:
 			return False
 		self.message = None
 		bot.waiting_reactions.pop(message.id, None)
 		try:
-			await message.delete()
+			if keep:
+				await message.clear_reactions()
+			else:
+				await message.delete()
 		except DiscordException:
 			pass
 		return True

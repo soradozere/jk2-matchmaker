@@ -32,6 +32,9 @@ async def show_matches(ctx):
 
 @author_match
 async def show_teams(ctx, match: bot.Match):
+	if match.state == bot.Match.BALANCE and match.balance_menu.options:
+		await ctx.reply(embed=match.embeds.balance_preview(match.balance_menu, match.balance_menu.idx))
+		return
 	if match.state not in [bot.Match.DRAFT, bot.Match.WAITING_REPORT]:
 		raise bot.Exc.MatchStateError('Match must be on draft or waiting report state.')
 	await match.draft.print(ctx)
