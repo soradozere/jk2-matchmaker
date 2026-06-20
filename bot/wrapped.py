@@ -3,7 +3,7 @@
 	Auto-published on the 1st (pinging @everyone in channels with wrapped_channel on),
 	and re-shown anytime via =wrapped. Both report the last completed month. """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from nextcord import Embed, Colour, DiscordException
@@ -33,13 +33,14 @@ def build_embed(report, agg):
 	""" Compose the Wrapped embed from a month's report + aggregates payloads.
 		Returns None if the month had no matches. """
 	players = agg.get('players') or []
-	match_count = agg.get('matchCount') or 0
-	if not match_count:
+	match_count = agg.get('matchCount') or 0  # matches with CSV stats (for the capper qualifier)
+	total_matches = (report.get('redBlue') or {}).get('total') or 0  # all matches this month
+	if not total_matches and not players:
 		return None
 
 	month = report.get('month', 'last month')
 	embed = Embed(title=f"🏆 JK2 — {month} Wrapped", colour=Colour(0xf1c40f), url=soracle.cfg.SORACLE_API_URL)
-	lines = [f"*That's a wrap on {month} — **{match_count}** matches played!*\n"]
+	lines = [f"*That's a wrap on {month} — **{total_matches}** matches played!*\n"]
 
 	if star := report.get('starPlayer'):
 		lines.append("⭐ **Star Player** — **{n}** ({w}W/{l}L, rating {s})".format(
@@ -89,17 +90,17 @@ async def render_month(year, month):
 
 
 async def show(ctx):
-	""" =wrapped — the last completed month, falling back to the current month if that's empty. """
-	now = datetime.now(timezone.utc)
+	""" =wrapped — the last completed month (whatever data exists, missing awards omitted). """
+	now = datetime.now(PUBLISH_TZ)
 	year, month = _prev_month(now)
 	try:
 		embed = await render_month(year, month)
-		if embed is None:  # nothing last month yet (e.g. before the first full month)
-			embed = await render_month(now.year, now.month)
 	except soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 	if embed is None:
-		raise bot.Exc.NotFoundError(ctx.qc.gt("No wrapped summary available yet."))
+		raise bot.Exc.NotFoundError(ctx.qc.gt(
+			"No completed month to wrap yet — the first monthly Wrapped lands on the 1st."
+		))
 	await ctx.reply(embed=embed)
 
 
