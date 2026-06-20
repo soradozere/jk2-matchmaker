@@ -274,11 +274,8 @@ async def last_game_soracle(ctx):
 	def team_value(team_name, roster):
 		rows = by_team[team_name]
 		if rows:
-			rows = sorted(rows, key=lambda r: (r.get('caps', 0), r.get('returns', 0)), reverse=True)
-			lines = ["{name} — {c}c {r}r {k}/{d}".format(
-				name=r.get('name', '?'), c=r.get('caps', 0), r=r.get('returns', 0),
-				k=r.get('kills', 0), d=r.get('deaths', 0)
-			) for r in rows]
+			rows = sorted(rows, key=lambda r: r.get('score', 0), reverse=True)
+			lines = ["{name} — **{s}**".format(name=r.get('name', '?'), s=r.get('score', 0)) for r in rows]
 		else:
 			lines = list(roster or []) or ["—"]
 		return "\n".join(lines)[:1024]
@@ -286,7 +283,7 @@ async def last_game_soracle(ctx):
 	embed.add_field(name=f"🔥 Red ({data.get('redScore', 0)})", value=team_value('Red', data.get('redTeam')), inline=True)
 	embed.add_field(name=f"💧 Blue ({data.get('blueScore', 0)})", value=team_value('Blue', data.get('blueTeam')), inline=True)
 	if any(by_team.values()):
-		embed.set_footer(text="caps · returns · kills/deaths")
+		embed.set_footer(text="Final score")
 	await ctx.reply(embed=embed)
 
 
