@@ -69,12 +69,22 @@ async def on_message(message):
 			await ctx.error(str(e), title=e.__class__.__name__)
 		except Exception as e:
 			tb = traceback.format_exc()
-			# Owner-only: surface the traceback tail in Discord so it can be debugged
-			# without digging through hosting logs. Everyone else just sees the error.
+			# Surface the traceback tail in Discord so crashes can be debugged without
+			# digging through hosting logs. The triggering owner sees it inline;
+			# otherwise the owner is DM'd it (whoever set off the crash).
 			detail = str(e)
 			if ctx.author.id == cfg.DC_OWNER_ID:
 				detail = f"{str(e)}\n```\n{tb[-1500:]}\n```"
 			await ctx.error(detail, title="RuntimeError")
+			if ctx.author.id != cfg.DC_OWNER_ID:
+				try:
+					owner = dc.get_user(cfg.DC_OWNER_ID) or await dc.fetch_user(cfg.DC_OWNER_ID)
+					if owner:
+						await owner.send(
+							f"⚠️ `{message.content}` by {ctx.author} crashed:\n```\n{tb[-1800:]}\n```"
+						)
+				except Exception:
+					pass
 			log.error("\n".join([
 				f"Error processing a text message command.",
 				f"QC: {ctx.channel.guild.name}>#{ctx.channel.name} ({qc.id}).",
