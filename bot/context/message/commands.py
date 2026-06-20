@@ -3,6 +3,7 @@ import re
 from typing import Callable
 
 from core.client import dc
+from core.config import cfg
 from core.console import log
 from core.utils import get_nick, parse_duration
 
@@ -67,13 +68,19 @@ async def on_message(message):
 		except bot.Exc.PubobotException as e:
 			await ctx.error(str(e), title=e.__class__.__name__)
 		except Exception as e:
-			await ctx.error(str(e), title="RuntimeError")
+			tb = traceback.format_exc()
+			# Owner-only: surface the traceback tail in Discord so it can be debugged
+			# without digging through hosting logs. Everyone else just sees the error.
+			detail = str(e)
+			if ctx.author.id == cfg.DC_OWNER_ID:
+				detail = f"{str(e)}\n```\n{tb[-1500:]}\n```"
+			await ctx.error(detail, title="RuntimeError")
 			log.error("\n".join([
 				f"Error processing a text message command.",
 				f"QC: {ctx.channel.guild.name}>#{ctx.channel.name} ({qc.id}).",
 				f"Member: {ctx.author} ({ctx.author.id}).",
 				f"Content: `{message.content}`.",
-				f"Exception: {str(e)}. Traceback:\n{traceback.format_exc()}=========="
+				f"Exception: {str(e)}. Traceback:\n{tb}=========="
 			]))
 
 
