@@ -524,14 +524,20 @@ async def _report(
 ): await run_slash(bot.commands.report, interaction=interaction, result=result)
 
 
-@dc.slash_command(name='lastgame', description='Show last game details.', **guild_kwargs)
+@dc.slash_command(name='lastgame', description='In-depth view of the last match recorded on Soracle.', **guild_kwargs)
 async def _last_game(
+		interaction: Interaction,
+): await run_slash(bot.commands.last_game_soracle, interaction=interaction)
+
+
+@dc.slash_command(name='lastgame_vanilla', description='Show last game details (vanilla view).', **guild_kwargs)
+async def _last_game_vanilla(
 		interaction: Interaction,
 		queue: str = SlashOption(required=False),
 		player: Member = SlashOption(required=False, verify=False),
 		match_id: int = SlashOption(required=False)
 ): await run_slash(bot.commands.last_game, interaction=interaction, queue=queue, player=player, match_id=match_id)
-_last_game.on_autocomplete("queue")(autocomplete.queues)
+_last_game_vanilla.on_autocomplete("queue")(autocomplete.queues)
 
 
 @dc.slash_command(name='top', description='Show top players on the channel.', **guild_kwargs)

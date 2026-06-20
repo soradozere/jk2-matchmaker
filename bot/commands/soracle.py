@@ -2,10 +2,11 @@ __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
 	'kills_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
-	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'wrapped'
+	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'wrapped', 'last_game_soracle'
 ]
 
 from math import ceil
+from datetime import datetime
 
 from nextcord import Member, Embed, Colour
 
@@ -239,6 +240,53 @@ async def friend(ctx, player: Member = None):
 		embed.description = "You've won **{w}** games alongside **{name}** this month ({g} together, {l} lost).".format(
 			name=fr['name'], w=fr['wins'], g=fr['games'], l=fr['losses']
 		)
+	await ctx.reply(embed=embed)
+
+
+async def last_game_soracle(ctx):
+	""" In-depth view of the last match recorded on Soracle (=lg / /lastgame). """
+	try:
+		data = await soracle.fetch_last_match()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	if data is None:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("No matches have been recorded on Soracle yet."))
+
+	winner = data.get('winner')
+	colour = Colour(0xe24b4a) if winner == 'Red' else Colour(0x4a90e2) if winner == 'Blue' else Colour(0x95a5a6)
+	try:
+		when = datetime.fromisoformat(data['date'].replace('Z', '+00:00')).strftime('%d %b %Y, %H:%M')
+	except (ValueError, KeyError, AttributeError):
+		when = data.get('date', '')
+
+	embed = Embed(title=f"Last game — {when}", colour=colour, url=cfg.SORACLE_API_URL)
+	result = ctx.qc.gt("Tie") if winner == 'Tie' else f"{winner} win"
+	embed.description = "🔥 **Red {rs}** — **{bs} Blue** 💧 · {result} · {mt} pick".format(
+		rs=data.get('redScore', 0), bs=data.get('blueScore', 0), result=result,
+		mt=(data.get('matchType') or 'manual').capitalize()
+	)
+
+	by_team = {'Red': [], 'Blue': []}
+	for s in (data.get('stats') or []):
+		if s.get('team') in by_team:
+			by_team[s['team']].append(s)
+
+	def team_value(team_name, roster):
+		rows = by_team[team_name]
+		if rows:
+			rows = sorted(rows, key=lambda r: (r.get('caps', 0), r.get('returns', 0)), reverse=True)
+			lines = ["{name} — {c}c {r}r {k}/{d}".format(
+				name=r.get('name', '?'), c=r.get('caps', 0), r=r.get('returns', 0),
+				k=r.get('kills', 0), d=r.get('deaths', 0)
+			) for r in rows]
+		else:
+			lines = list(roster or []) or ["—"]
+		return "\n".join(lines)[:1024]
+
+	embed.add_field(name=f"🔥 Red ({data.get('redScore', 0)})", value=team_value('Red', data.get('redTeam')), inline=True)
+	embed.add_field(name=f"💧 Blue ({data.get('blueScore', 0)})", value=team_value('Blue', data.get('blueTeam')), inline=True)
+	if any(by_team.values()):
+		embed.set_footer(text="caps · returns · kills/deaths")
 	await ctx.reply(embed=embed)
 
 

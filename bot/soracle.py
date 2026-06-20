@@ -116,6 +116,16 @@ async def fetch_friend(discord_id):
 	return data
 
 
+async def fetch_last_match():
+	""" The most recent match recorded on Soracle (with scoreboard), or None if none. """
+	status, data = await _request('GET', "/api/bot/last-match")
+	if status == 404:
+		return None
+	if status != 200 or data is None:
+		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+	return data
+
+
 def _month_qs(year, month):
 	return f"?year={year}&month={month}" if year and month else ""
 

@@ -322,6 +322,13 @@ async def _leaderboard(ctx: MessageContext, args: str = None):
 
 @message_command('lastgame', 'lg')
 async def _lastgame(ctx: MessageContext, args: str = None):
+	# =lg now shows the in-depth view of the last match recorded on Soracle.
+	# The vanilla pubobot view lives on =lastgame_vanilla / =lgv.
+	await bot.commands.last_game_soracle(ctx)
+
+
+@message_command('lastgame_vanilla', 'lgv')
+async def _lastgame_vanilla(ctx: MessageContext, args: str = None):
 	""" Guess parameter name on the supplied value type :peka5: """
 	if not args:
 		await bot.commands.last_game(ctx)
