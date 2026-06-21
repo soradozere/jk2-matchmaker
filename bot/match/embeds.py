@@ -113,6 +113,11 @@ class Embeds:
 					cmd=f"`{self.m.qc.cfg.prefix}capfor {'/'.join((team.name.lower() for team in self.m.teams[:2]))}`"
 				)
 
+			if not self.m.cfg['soracle_balance'] and len(self.m.players) == 12:
+				msg += "\n" + self.m.gt("💡 Use `{p}options` to see Soracle's balance suggestions.").format(
+					p=self.m.qc.cfg.prefix
+				)
+
 			embed.add_field(name="—", value=msg + "\n\u200b", inline=False)
 
 		embed.set_footer(**self.footer)
@@ -156,6 +161,39 @@ class Embeds:
 		)
 		self._balance_body(embed, menu.options[idx])
 		embed.set_footer(text=self.m.gt("Private preview — only captains' reactions on the public menu decide the teams."))
+		return embed
+
+	def balance_options(self, options):
+		""" All Soracle suggestions in one read-only embed (=options / auto-post). """
+		embed = Embed(
+			colour=Colour(0x50e3c2),
+			title=self.m.gt("__**{queue}** — Soracle balance suggestions__").format(
+				queue=self.m.queue.name[0].upper() + self.m.queue.name[1:]
+			)
+		)
+		members = {p.id: p for p in self.m.players}
+		labels = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+		for i, opt in enumerate(options):
+			result = opt.get('result') or {}
+			rows = []
+			for team, ids_key, names_key, tier_key in (
+				(self.m.teams[0], 'teamRedDiscordIds', 'teamRed', 'redTierTotal'),
+				(self.m.teams[1], 'teamBlueDiscordIds', 'teamBlue', 'blueTierTotal'),
+			):
+				ids = opt.get(ids_key) or []
+				names = result.get(names_key) or []
+				roster = " ".join(
+					f"`{get_nick(members[int(x)])}`" if x and int(x) in members else f"`{names[n] if n < len(names) else '?'}`"
+					for n, x in enumerate(ids)
+				) or self.m.gt("empty")
+				rows.append(f"{team.emoji} `tier {result.get(tier_key, '?')}` {roster}")
+			label = opt.get('label') or self.m.gt("Option {n}").format(n=i + 1)
+			embed.add_field(
+				name=f"{labels[i] if i < len(labels) else str(i + 1) + '.'} {label}",
+				value="\n".join(rows)[:1024],
+				inline=False
+			)
+		embed.set_footer(text=self.m.gt("Suggestions only: set the teams manually however you like."))
 		return embed
 
 	def balance_menu(self, menu):

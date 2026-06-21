@@ -677,6 +677,12 @@ async def _friend(
 ): await run_slash(bot.commands.friend, interaction=interaction, player=player)
 
 
+@dc.slash_command(name='options', description="Show Soracle's three balance suggestions for your match (read-only).", **guild_kwargs)
+async def _options(
+		interaction: Interaction,
+): await run_slash(bot.commands.balance_options, interaction=interaction)
+
+
 @dc.slash_command(name='wrapped', description='The monthly Wrapped summary of awards.', **guild_kwargs)
 async def _wrapped(
 		interaction: Interaction,

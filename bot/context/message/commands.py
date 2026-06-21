@@ -220,6 +220,11 @@ async def _rebalance(ctx: MessageContext, args: str = None):
 	await bot.commands.rebalance(ctx)
 
 
+@message_command('options', 'opts')
+async def _options(ctx: MessageContext, args: str = None):
+	await bot.commands.balance_options(ctx)
+
+
 @message_command('stats')
 async def _monthly_stats(ctx: MessageContext, args: str = None):
 	if not args:

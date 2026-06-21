@@ -2,7 +2,8 @@ __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
 	'kills_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
-	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'wrapped', 'last_game_soracle'
+	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'wrapped', 'last_game_soracle',
+	'balance_options'
 ]
 
 from math import ceil
@@ -11,7 +12,7 @@ from datetime import datetime, timezone
 from nextcord import Member, Embed, Colour
 
 from core.config import cfg
-from core.utils import get_nick
+from core.utils import find, get_nick
 
 import bot
 from bot import soracle
@@ -310,6 +311,30 @@ async def last_game_soracle(ctx):
 	if any(by_team.values()):
 		embed.set_footer(text="Final score")
 	await ctx.reply(embed=embed)
+
+
+async def balance_options(ctx):
+	""" Read-only: post Soracle's three balance suggestions for the author's current
+		match, so players can copy them into manual picks or ignore them. No menu, no
+		reactions, no state change. Shares the embed builder with the match auto-post. """
+	match = find(lambda m: m.qc == ctx.qc and ctx.author in m.players, bot.active_matches)
+	if match is None:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("You're not in an active match."))
+	if len(match.players) != 12:
+		raise bot.Exc.MatchStateError(ctx.qc.gt(
+			"Soracle balancing needs exactly 12 players (this match has {n})."
+		).format(n=len(match.players)))
+
+	try:
+		options = await soracle.fetch_balance([p.id for p in match.players])
+	except soracle.UnlinkedError as e:
+		raise bot.Exc.NotFoundError(ctx.qc.gt(
+			"{players} not linked to Soracle, so teams can't be suggested. An admin can link them."
+		).format(players=", ".join(f"<@{i}>" for i in e.unlinked_ids)))
+	except soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	await ctx.reply(embed=match.embeds.balance_options(options))
 
 
 async def kills_leaderboard(ctx):

@@ -279,12 +279,29 @@ class Match:
 				await self.balance_menu.start(ctx)
 			elif self.state == self.DRAFT:
 				await self.draft.start(ctx)
+				# With the interactive menu off, auto-post Soracle's suggestions for a
+				# full 12-player match so captains can copy them into manual picks.
+				if not self.cfg['soracle_balance']:
+					await self.post_balance_suggestions(ctx)
 			elif self.state == self.WAITING_REPORT:
 				await self.start_waiting_report(ctx)
 		else:
 			if self.state != self.WAITING_REPORT:
 				await self.final_message(ctx)
 			await self.finish_match(ctx)
+
+	async def post_balance_suggestions(self, ctx):
+		""" Auto-post Soracle's three balance suggestions for a full 12-player match.
+			Read-only and best-effort — never blocks or breaks the match flow. """
+		if len(self.players) != 12:
+			return
+		try:
+			options = await bot.soracle.fetch_balance([p.id for p in self.players])
+			await ctx.notice(embed=self.embeds.balance_options(options))
+		except bot.soracle.SoracleError as e:
+			log.debug(f"Match {self.id}: no balance suggestions posted ({e}).")
+		except Exception as e:
+			log.error(f"Match {self.id}: failed to auto-post balance suggestions: {e}")
 
 	def rank_str(self, member):
 		return self.queue.qc.rating_rank(self.ratings[member.id])['rank']
