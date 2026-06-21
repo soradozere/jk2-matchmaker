@@ -112,14 +112,15 @@ async def potm(ctx):
 	else:
 		games = star.get('wins', 0) + star.get('losses', 0)
 		winrate = int(star['wins'] * 100 / games) if games else 0
-		embed.description = "## {name}\n**{w}W / {l}L** ({wr}% winrate) over {m} games\nStar rating: **{s}**".format(
+		embed.description = "## {name}\n**{w}W / {l}L** ({wr}% win rate) over {m} games\n**{s}** win-value per game".format(
 			name=star['name'], w=star.get('wins', 0), l=star.get('losses', 0),
 			wr=winrate, m=star.get('matches', 0), s=star.get('avgScore', 0)
 		)
 		embed.set_footer(text=(
-			"Star rating = avg points per game: a win scores ~1 (more for beating a stronger "
-			"team, less when you were favourite), a loss scores 0. Rewards winning AND beating "
-			"tough opponents — not padding against weak teams."
+			"Rewards winning the games you weren't favoured to win. Each win is worth more when "
+			"your team was the underdog (lower combined tier) and less when you were favourite; "
+			"a loss scores 0 — so one upset beats a string of expected wins. Star Player = best "
+			"average win-value per game among the month's regulars."
 		))
 	await ctx.reply(embed=embed)
 
@@ -151,6 +152,7 @@ async def rivals(ctx):
 				standing = f"all square **{p1w}–{p2w}**"
 			lines.append(f"**{i + 1}.** {p1} vs {p2} — faced **{count}** times · {standing}")
 		embed.description = "\n".join(lines)
+		embed.set_footer(text="The most-contested matchups — ranked by how close the head-to-head is, not who plays most.")
 	await ctx.reply(embed=embed)
 
 
@@ -212,8 +214,9 @@ async def nemesis(ctx, player: Member = None):
 	if not nem:
 		embed.description = ctx.qc.gt("No nemesis yet this month — not enough games against any one opponent.")
 	else:
-		embed.description = "**{opp}** has beaten you **{tw}** times this month (you've won **{mw}** vs them, {meet} meetings).".format(
-			opp=nem['name'], tw=nem['theirWins'], mw=nem['myWins'], meet=nem['meetings']
+		pct = round(nem['theirWins'] * 100 / nem['meetings']) if nem['meetings'] else 0
+		embed.description = "**{opp}** has beaten you in **{pct}%** of your meetings this month (**{tw} of {meet}**; you've won **{mw}**).".format(
+			opp=nem['name'], pct=pct, tw=nem['theirWins'], mw=nem['myWins'], meet=nem['meetings']
 		)
 	await ctx.reply(embed=embed)
 
@@ -237,8 +240,9 @@ async def friend(ctx, player: Member = None):
 	if not fr:
 		embed.description = ctx.qc.gt("No best teammate yet this month — not enough games alongside any one player.")
 	else:
-		embed.description = "You've won **{w}** games alongside **{name}** this month ({g} together, {l} lost).".format(
-			name=fr['name'], w=fr['wins'], g=fr['games'], l=fr['losses']
+		pct = round(fr['wins'] * 100 / fr['games']) if fr['games'] else 0
+		embed.description = "You win **{pct}%** of games alongside **{name}** this month (**{w} of {g}**).".format(
+			name=fr['name'], pct=pct, w=fr['wins'], g=fr['games']
 		)
 	await ctx.reply(embed=embed)
 
