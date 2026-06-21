@@ -35,8 +35,9 @@ async def on_think(frame_time):
 
 
 # Forward end-of-match scoreboard CSVs posted in a watched channel to Soracle's
-# approval queue. No Discord feedback by design — admins review on the site;
-# outcomes (queued / skipped / errors) go to the bot log only.
+# approval queue. Normal outcomes are silent (admins review on the site); only
+# failures (Soracle unreachable / rejected the upload) DM the owner so a match
+# can't silently vanish.
 #
 # A channel is watched if it's listed in cfg.SCOREBOARD_CHANNELS (a plain,
 # dedicated channel — no pubobot-enable needed) OR it's a pubobot channel with
@@ -48,9 +49,24 @@ def _is_scoreboard_channel(message):
 	return qc is not None and getattr(qc.cfg, 'scoreboard_watch', False)
 
 
+async def _dm_owner(text):
+	""" Best-effort DM to the bot owner (DC_OWNER_ID). Used to flag scoreboard
+		uploads that didn't reach Soracle, so a match can't silently vanish. """
+	try:
+		owner = dc.get_user(cfg.DC_OWNER_ID) or await dc.fetch_user(cfg.DC_OWNER_ID)
+		if owner:
+			await owner.send(text[:1900])
+	except Exception as e:
+		log.error(f"Could not DM owner: {e}")
+
+
 async def handle_scoreboard_attachments(message):
 	if not _is_scoreboard_channel(message):
 		return
+
+	where = f"#{getattr(message.channel, 'name', '?')}"
+	if message.guild:
+		where = f"{message.guild.name} > {where}"
 
 	for attachment in message.attachments:
 		if not attachment.filename.lower().endswith('.csv'):
@@ -65,11 +81,26 @@ async def handle_scoreboard_attachments(message):
 				user_id=message.author.id,
 				username=str(message.author),
 			)
-			log.info(f"Scoreboard '{attachment.filename}' -> Soracle: HTTP {status} {data}")
 		except soracle.SoracleError as e:
 			log.error(f"Failed to upload scoreboard '{attachment.filename}' to Soracle: {e}")
+			await _dm_owner(
+				f"⚠️ Couldn't reach Soracle to upload scoreboard `{attachment.filename}` "
+				f"({where}). The CSV is still in the channel — re-post it once Soracle is back."
+			)
+			continue
 		except Exception as e:
 			log.error(f"Unexpected error uploading scoreboard '{attachment.filename}': {e}")
+			await _dm_owner(f"⚠️ Error uploading scoreboard `{attachment.filename}` ({where}): {e}")
+			continue
+
+		log.info(f"Scoreboard '{attachment.filename}' -> Soracle: HTTP {status} {data}")
+		# 200 = queued / skipped (<12) / duplicate — all fine. >=400 means Soracle
+		# rejected it (bad CSV, auth, server error), which warrants a heads-up.
+		if status >= 400:
+			await _dm_owner(
+				f"⚠️ Soracle rejected scoreboard `{attachment.filename}` ({where}) — "
+				f"HTTP {status}: {data}. The CSV is still in the channel."
+			)
 
 
 @dc.event
