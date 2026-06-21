@@ -8,6 +8,7 @@ from nextcord import Member
 from typing import List
 from functools import wraps
 
+from core.config import cfg
 from core.utils import get, find
 
 import bot
@@ -147,8 +148,17 @@ async def report(ctx, match: bot.Match, result):
 		await match.report_loss(ctx, ctx.author, draw_flag=1)
 	elif result == 'abort':
 		await match.report_loss(ctx, ctx.author, draw_flag=2)
+		return
 	else:
 		raise bot.Exc.ValueError("Invalid result value.")
+
+	# A real result was recorded (loss/draw) — nudge captains to log it on Soracle.
+	try:
+		await ctx.notice(ctx.qc.gt(
+			"📊 Captains: log this game on Soracle → {url}"
+		).format(url=cfg.SORACLE_API_URL))
+	except Exception:
+		pass
 
 
 async def report_manual(ctx, queue: str, winners: List[Member], losers: List[Member], draw: bool = False):
