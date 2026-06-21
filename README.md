@@ -19,6 +19,16 @@ touching the bot.
 - **`/stats`** (also `=stats`) — month-to-date CTF stats from Soracle: matches, W/L, K/D, caps,
   returns, assists, base cleans, flag grabs, flag hold time. Vanilla's admin stats tools moved
   to `/stats_admin`.
+- **`/friend`** (also `=friend`) — the team-mate you've won the most games alongside this month.
+- **`/lastgame`** (also `=lg`) — in-depth view of the last match recorded on Soracle (score,
+  winner, per-player final scores). Vanilla's last-game view is preserved on `/lastgame_vanilla`
+  (`=lgv`).
+- **Scoreboard auto-logging** — watches a channel for end-of-match `.csv` scoreboards and uploads
+  them to Soracle's approval queue (only games with ≥12 distinct players). Set the channel(s) via
+  the `SCOREBOARD_CHANNELS` config/env list (works for a dedicated channel — no pubobot-enable
+  needed) or the per-channel `scoreboard_watch` setting. The owner is DM'd if an upload fails.
+- **Reporting** — `=rl` reports a loss and nudges captains to log the game on Soracle. There are no
+  player draw/abort commands; aborting is moderator-only via `/match report` (`abort`).
 - **Classic Elo rating system** (`rating_system: Elo`) — team-average expected score, K=24,
   alongside vanilla's flat/Glicko2/TrueSkill options.
 - **JK2 server watcher** — polls the community game servers over the Quake3 UDP protocol and
