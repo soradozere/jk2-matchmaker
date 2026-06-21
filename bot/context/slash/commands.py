@@ -517,11 +517,10 @@ async def _pick(
 ): await run_slash(bot.commands.pick, interaction=interaction, players=[player])
 
 
-@dc.slash_command(name='report', description='Report match result.', **guild_kwargs)
+@dc.slash_command(name='report', description="Report your team's loss.", **guild_kwargs)
 async def _report(
 		interaction: Interaction,
-		result: str = SlashOption(choices=['loss', 'draw', 'abort'])
-): await run_slash(bot.commands.report, interaction=interaction, result=result)
+): await run_slash(bot.commands.report, interaction=interaction, result='loss')
 
 
 @dc.slash_command(name='lastgame', description='In-depth view of the last match recorded on Soracle.', **guild_kwargs)

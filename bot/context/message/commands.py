@@ -164,14 +164,8 @@ async def _rl(ctx: MessageContext, args: str = None):
 	await bot.commands.report(ctx, result='loss')
 
 
-@message_command('report_draw', 'rd')
-async def _rd(ctx: MessageContext, args: str = None):
-	await bot.commands.report(ctx, result='draw')
-
-
-@message_command('report_cancel', 'rc')
-async def _rc(ctx: MessageContext, args: str = None):
-	await bot.commands.report(ctx, result='abort')
+# Draw / abort are intentionally not player commands (no ties; aborting is
+# admin-only via /match report to avoid accidental cancels).
 
 
 @message_command('expire')
