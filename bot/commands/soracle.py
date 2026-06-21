@@ -6,7 +6,7 @@ __all__ = [
 ]
 
 from math import ceil
-from datetime import datetime
+from datetime import datetime, timezone
 
 from nextcord import Member, Embed, Colour
 
@@ -243,6 +243,30 @@ async def friend(ctx, player: Member = None):
 	await ctx.reply(embed=embed)
 
 
+def _time_ago(iso):
+	""" Human "x ago" for an ISO-8601 UTC timestamp (timezone-agnostic for =lg). """
+	if not iso:
+		return None
+	try:
+		then = datetime.fromisoformat(iso.replace('Z', '+00:00'))
+	except (ValueError, AttributeError):
+		return None
+	secs = int((datetime.now(timezone.utc) - then).total_seconds())
+	if secs < 60:
+		return "just now"
+	mins, hours, days = secs // 60, secs // 3600, secs // 86400
+	unit = lambda n, name: f"{n} {name}{'' if n == 1 else 's'}"
+	if days:
+		rem_h = (secs % 86400) // 3600
+		parts = [unit(days, "day")] + ([unit(rem_h, "hour")] if rem_h else [])
+	elif hours:
+		rem_m = (secs % 3600) // 60
+		parts = [unit(hours, "hour")] + ([unit(rem_m, "minute")] if rem_m else [])
+	else:
+		parts = [unit(mins, "minute")]
+	return ", ".join(parts) + " ago"
+
+
 async def last_game_soracle(ctx):
 	""" In-depth view of the last match recorded on Soracle (=lg / /lastgame). """
 	try:
@@ -254,10 +278,7 @@ async def last_game_soracle(ctx):
 
 	winner = data.get('winner')
 	colour = Colour(0xe24b4a) if winner == 'Red' else Colour(0x4a90e2) if winner == 'Blue' else Colour(0x95a5a6)
-	try:
-		when = datetime.fromisoformat(data['date'].replace('Z', '+00:00')).strftime('%d %b %Y, %H:%M')
-	except (ValueError, KeyError, AttributeError):
-		when = data.get('date', '')
+	when = _time_ago(data.get('date')) or "recently"
 
 	embed = Embed(title=f"Last game — {when}", colour=colour, url=cfg.SORACLE_API_URL)
 	result = ctx.qc.gt("Tie") if winner == 'Tie' else f"{winner} win"
