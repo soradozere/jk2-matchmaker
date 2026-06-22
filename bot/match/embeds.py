@@ -176,9 +176,9 @@ class Embeds:
 		for i, opt in enumerate(options):
 			result = opt.get('result') or {}
 			rows = []
-			for team, ids_key, names_key, tier_key in (
-				(self.m.teams[0], 'teamRedDiscordIds', 'teamRed', 'redTierTotal'),
-				(self.m.teams[1], 'teamBlueDiscordIds', 'teamBlue', 'blueTierTotal'),
+			for team, ids_key, names_key in (
+				(self.m.teams[0], 'teamRedDiscordIds', 'teamRed'),
+				(self.m.teams[1], 'teamBlueDiscordIds', 'teamBlue'),
 			):
 				ids = opt.get(ids_key) or []
 				names = result.get(names_key) or []
@@ -186,7 +186,7 @@ class Embeds:
 					f"`{get_nick(members[int(x)])}`" if x and int(x) in members else f"`{names[n] if n < len(names) else '?'}`"
 					for n, x in enumerate(ids)
 				) or self.m.gt("empty")
-				rows.append(f"{team.emoji} `tier {result.get(tier_key, '?')}` {roster}")
+				rows.append(f"{team.emoji} {roster}")
 			label = opt.get('label') or self.m.gt("Option {n}").format(n=i + 1)
 			embed.add_field(
 				name=f"{labels[i] if i < len(labels) else str(i + 1) + '.'} {label}",
