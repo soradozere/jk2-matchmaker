@@ -1,6 +1,6 @@
 __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
-	'kills_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
+	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
 	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'wrapped', 'last_game_soracle',
 	'balance_options'
@@ -337,19 +337,39 @@ async def balance_options(ctx):
 	await ctx.reply(embed=match.embeds.balance_options(options))
 
 
+def _kd_lines(players):
+	return "\n".join(
+		"**{n}.** {name} — **{kd:.2f}** K/D ({k}/{d})".format(
+			n=i + 1, name=p['name'], kd=p['kills'] / p['deaths'], k=p['kills'], d=p['deaths']
+		) for i, p in enumerate(players)
+	)
+
+
 async def kills_leaderboard(ctx):
-	data, players, _ = await _monthly_players(ctx)
-	top = sorted([p for p in players if p.get('kills')], key=lambda p: p['kills'], reverse=True)[:5]
-	embed = Embed(title=f"Top fraggers — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	data, players, min_matches = await _monthly_players(ctx)
+	# Best K/D. Min-games floor so one big game can't top the board; needs deaths>0.
+	ranked = [p for p in players if p.get('deaths') and p.get('matches', 0) >= min_matches]
+	top = sorted(ranked, key=lambda p: p['kills'] / p['deaths'], reverse=True)[:5]
+	embed = Embed(title=f"Best K/D — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
 	if not top:
-		embed.description = ctx.qc.gt("No kills recorded this month yet.")
+		embed.description = ctx.qc.gt("Not enough games yet for a K/D ranking.")
 	else:
-		embed.description = "\n".join(
-			"**{n}.** {name} — **{k}** kills (K/D {kd})".format(
-				n=i + 1, name=p['name'], k=p['kills'],
-				kd=f"{p['kills'] / p['deaths']:.2f}" if p.get('deaths') else "∞"
-			) for i, p in enumerate(top)
-		)
+		embed.description = _kd_lines(top)
+		embed.set_footer(text=f"Min {min_matches} game{'s' if min_matches != 1 else ''} this month")
+	await ctx.reply(embed=embed)
+
+
+async def deaths_leaderboard(ctx):
+	data, players, min_matches = await _monthly_players(ctx)
+	# Worst K/D, same min-games floor.
+	ranked = [p for p in players if p.get('deaths') and p.get('matches', 0) >= min_matches]
+	bottom = sorted(ranked, key=lambda p: p['kills'] / p['deaths'])[:5]
+	embed = Embed(title=f"Worst K/D — {data.get('month', 'this month')}", colour=Colour(0xe24b4a), url=cfg.SORACLE_API_URL)
+	if not bottom:
+		embed.description = ctx.qc.gt("Not enough games yet for a K/D ranking.")
+	else:
+		embed.description = _kd_lines(bottom)
+		embed.set_footer(text=f"Min {min_matches} game{'s' if min_matches != 1 else ''} this month")
 	await ctx.reply(embed=embed)
 
 

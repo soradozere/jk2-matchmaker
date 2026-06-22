@@ -250,6 +250,11 @@ async def _kills(ctx: MessageContext, args: str = None):
 	await bot.commands.kills_leaderboard(ctx)
 
 
+@message_command('deaths')
+async def _deaths(ctx: MessageContext, args: str = None):
+	await bot.commands.deaths_leaderboard(ctx)
+
+
 @message_command('caps')
 async def _caps(ctx: MessageContext, args: str = None):
 	await bot.commands.caps_leaderboard(ctx)

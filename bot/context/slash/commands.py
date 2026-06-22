@@ -603,10 +603,16 @@ async def _dfa(
 ): await run_slash(bot.commands.dfa_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='kills', description='Top 5 fraggers this month (with K/D).', **guild_kwargs)
+@dc.slash_command(name='kills', description='Top 5 best K/D this month.', **guild_kwargs)
 async def _kills(
 		interaction: Interaction,
 ): await run_slash(bot.commands.kills_leaderboard, interaction=interaction)
+
+
+@dc.slash_command(name='deaths', description='Top 5 worst K/D this month.', **guild_kwargs)
+async def _deaths(
+		interaction: Interaction,
+): await run_slash(bot.commands.deaths_leaderboard, interaction=interaction)
 
 
 @dc.slash_command(name='caps', description='Top 5 most caps per run this month.', **guild_kwargs)
