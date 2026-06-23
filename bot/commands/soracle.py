@@ -297,24 +297,43 @@ async def last_game_soracle(ctx, player: Member = None):
 		mt=(data.get('matchType') or 'manual').capitalize()
 	)
 
-	by_team = {'Red': [], 'Blue': []}
-	for s in (data.get('stats') or []):
-		if s.get('team') in by_team:
-			by_team[s['team']].append(s)
+	stats = data.get('stats') or []
 
-	def team_value(team_name, roster):
-		rows = by_team[team_name]
-		if rows:
-			rows = sorted(rows, key=lambda r: r.get('score', 0), reverse=True)
-			lines = ["{name} — **{s}**".format(name=r.get('name', '?'), s=r.get('score', 0)) for r in rows]
+	if target:
+		# Just the queried player's own line for that game, not the full scoreboard.
+		me = data.get('playerName')
+		mine = next((s for s in stats if s.get('name') == me), None)
+		team = (mine or {}).get('team') or (
+			'Red' if me in (data.get('redTeam') or []) else 'Blue' if me in (data.get('blueTeam') or []) else None
+		)
+		outcome = ctx.qc.gt("draw") if winner == 'Tie' else (ctx.qc.gt("won") if team == winner else ctx.qc.gt("lost"))
+		if mine:
+			line = "Score **{s}** · {c} caps · {r} returns · {k}/{d} K/D".format(
+				s=mine.get('score', 0), c=mine.get('caps', 0), r=mine.get('returns', 0),
+				k=mine.get('kills', 0), d=mine.get('deaths', 0)
+			)
 		else:
-			lines = list(roster or []) or ["—"]
-		return "\n".join(lines)[:1024]
+			line = ctx.qc.gt("No detailed stats recorded for this game.")
+		embed.add_field(name=f"{me} ({team}) — {outcome}" if team else f"{me} — {outcome}", value=line, inline=False)
+	else:
+		by_team = {'Red': [], 'Blue': []}
+		for s in stats:
+			if s.get('team') in by_team:
+				by_team[s['team']].append(s)
 
-	embed.add_field(name=f"🔥 Red ({data.get('redScore', 0)})", value=team_value('Red', data.get('redTeam')), inline=True)
-	embed.add_field(name=f"💧 Blue ({data.get('blueScore', 0)})", value=team_value('Blue', data.get('blueTeam')), inline=True)
-	if any(by_team.values()):
-		embed.set_footer(text="Final score")
+		def team_value(team_name, roster):
+			rows = by_team[team_name]
+			if rows:
+				rows = sorted(rows, key=lambda r: r.get('score', 0), reverse=True)
+				lines = ["{name} — **{s}**".format(name=r.get('name', '?'), s=r.get('score', 0)) for r in rows]
+			else:
+				lines = list(roster or []) or ["—"]
+			return "\n".join(lines)[:1024]
+
+		embed.add_field(name=f"🔥 Red ({data.get('redScore', 0)})", value=team_value('Red', data.get('redTeam')), inline=True)
+		embed.add_field(name=f"💧 Blue ({data.get('blueScore', 0)})", value=team_value('Blue', data.get('blueTeam')), inline=True)
+		if any(by_team.values()):
+			embed.set_footer(text="Final score")
 	await ctx.reply(embed=embed)
 
 
