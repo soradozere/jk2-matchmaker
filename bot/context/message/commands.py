@@ -343,9 +343,14 @@ async def _leaderboard(ctx: MessageContext, args: str = None):
 
 @message_command('lastgame', 'lg')
 async def _lastgame(ctx: MessageContext, args: str = None):
-	# =lg now shows the in-depth view of the last match recorded on Soracle.
+	# =lg = last match on Soracle; =lg @player = that player's last game.
 	# The vanilla pubobot view lives on =lastgame_vanilla / =lgv.
-	await bot.commands.last_game_soracle(ctx)
+	if not args:
+		await bot.commands.last_game_soracle(ctx)
+		return
+	if (member := await ctx.get_member(args)) is None:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+	await bot.commands.last_game_soracle(ctx, player=member)
 
 
 @message_command('lastgame_vanilla', 'lgv')

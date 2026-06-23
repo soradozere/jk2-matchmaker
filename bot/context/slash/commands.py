@@ -523,10 +523,11 @@ async def _report(
 ): await run_slash(bot.commands.report, interaction=interaction, result='loss')
 
 
-@dc.slash_command(name='lastgame', description='In-depth view of the last match recorded on Soracle.', **guild_kwargs)
+@dc.slash_command(name='lastgame', description='Last match on Soracle, or a player\'s last game.', **guild_kwargs)
 async def _last_game(
 		interaction: Interaction,
-): await run_slash(bot.commands.last_game_soracle, interaction=interaction)
+		player: Member = SlashOption(required=False, verify=False),
+): await run_slash(bot.commands.last_game_soracle, interaction=interaction, player=player)
 
 
 @dc.slash_command(name='lastgame_vanilla', description='Show last game details (vanilla view).', **guild_kwargs)

@@ -117,12 +117,7 @@ async def potm(ctx):
 			name=star['name'], w=star.get('wins', 0), l=star.get('losses', 0),
 			wr=winrate, m=star.get('matches', 0), s=star.get('avgScore', 0)
 		)
-		embed.set_footer(text=(
-			"Rewards winning the games you weren't favoured to win. Each win is worth more when "
-			"your team was the underdog (lower combined tier) and less when you were favourite; "
-			"a loss scores 0 — so one upset beats a string of expected wins. Star Player = best "
-			"average win-value per game among the month's regulars."
-		))
+		embed.set_footer(text="Beating the odds > stat-padding. Underdog wins = 🔥, easy wins = meh, losses = 0. 🐐")
 	await ctx.reply(embed=embed)
 
 
@@ -272,20 +267,30 @@ def _time_ago(iso):
 	return ", ".join(parts) + " ago"
 
 
-async def last_game_soracle(ctx):
-	""" In-depth view of the last match recorded on Soracle (=lg / /lastgame). """
+async def last_game_soracle(ctx, player: Member = None):
+	""" In-depth view of the last match recorded on Soracle (=lg). With a player
+		(=lg @player), shows that player's last recorded game. """
+	target = await ctx.get_member(player) if player else None
+	if player and not target:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+
 	try:
-		data = await soracle.fetch_last_match()
+		data = await soracle.fetch_last_match(target.id if target else None)
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 	if data is None:
+		if target:
+			raise bot.Exc.NotFoundError(
+				f"No recorded games found for **{get_nick(target)}** on Soracle (they may not be linked)."
+			)
 		raise bot.Exc.NotFoundError(ctx.qc.gt("No matches have been recorded on Soracle yet."))
 
 	winner = data.get('winner')
 	colour = Colour(0xe24b4a) if winner == 'Red' else Colour(0x4a90e2) if winner == 'Blue' else Colour(0x95a5a6)
 	when = _time_ago(data.get('date')) or "recently"
 
-	embed = Embed(title=f"Last game — {when}", colour=colour, url=cfg.SORACLE_API_URL)
+	heading = f"{get_nick(target)}'s last game" if target else "Last game"
+	embed = Embed(title=f"{heading} — {when}", colour=colour, url=cfg.SORACLE_API_URL)
 	result = ctx.qc.gt("Tie") if winner == 'Tie' else f"{winner} win"
 	embed.description = "🔥 **Red {rs}** — **{bs} Blue** 💧 · {result} · {mt} pick".format(
 		rs=data.get('redScore', 0), bs=data.get('blueScore', 0), result=result,

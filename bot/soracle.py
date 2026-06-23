@@ -116,9 +116,12 @@ async def fetch_friend(discord_id):
 	return data
 
 
-async def fetch_last_match():
-	""" The most recent match recorded on Soracle (with scoreboard), or None if none. """
-	status, data = await _request('GET', "/api/bot/last-match")
+async def fetch_last_match(discord_id=None):
+	""" The most recent match recorded on Soracle (with scoreboard). With a discord_id,
+		returns that player's last match instead. None if there's no match (or, for a
+		player, if they're unlinked / have no recorded games). """
+	path = "/api/bot/last-match" + (f"?discordId={discord_id}" if discord_id else "")
+	status, data = await _request('GET', path)
 	if status == 404:
 		return None
 	if status != 200 or data is None:
