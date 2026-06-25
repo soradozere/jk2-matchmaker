@@ -234,10 +234,7 @@ async def _options(ctx: MessageContext, args: str = None):
 	await bot.commands.balance_options(ctx)
 
 
-# TEMPORARY PRACTICAL JOKE — keep =stats registered even while Soracle is off so
-# the bit fires now; the handler returns the joke when disabled. Restore
-# @soracle_command('stats') when done.
-@message_command('stats')
+@soracle_command('stats')
 async def _monthly_stats(ctx: MessageContext, args: str = None):
 	if not args:
 		await bot.commands.monthly_stats(ctx, player=None)
