@@ -156,19 +156,26 @@ async def commands_help(ctx, queue: str = None):
 		f"`{p}l` / `--` — leave the queue",
 		f"`{p}who` — see who's in the queue",
 	]), inline=False)
-	embed.add_field(name="Match", value="\n".join([
-		f"`/preview <1-3>` — privately preview a balance option",
+	soracle_on = bot.soracle.enabled()
+	match_lines = [
 		f"`{p}capfor <team>` — become a captain during manual picks",
 		f"`{p}p @player` — pick a player (captains)",
 		f"`{p}rl` — report a loss (losing captain)",
 		f"`{p}subme` · `{p}subfor @player` — substitutions",
-	]), inline=False)
-	embed.add_field(name="Stats & ranks", value="\n".join([
-		f"`{p}tier [@player]` — Soracle tier & roles",
-		f"`{p}stats [@player]` — month-to-date stats",
+	]
+	if soracle_on:
+		match_lines.insert(0, f"`/preview <1-3>` — privately preview a balance option")
+	embed.add_field(name="Match", value="\n".join(match_lines), inline=False)
+	stat_lines = [
 		f"`{p}rank [@player]` — Elo rank profile",
 		f"`{p}lb` — leaderboard",
-	]), inline=False)
+	]
+	if soracle_on:
+		stat_lines = [
+			f"`{p}tier [@player]` — Soracle tier & roles",
+			f"`{p}stats [@player]` — month-to-date stats",
+		] + stat_lines
+	embed.add_field(name="Stats & ranks", value="\n".join(stat_lines), inline=False)
 	embed.add_field(name="JK2 servers", value="\n".join([
 		f"`{p}servers` — live server status",
 		f"`{p}pug` — toggle the pug ping role",

@@ -43,6 +43,8 @@ async def on_think(frame_time):
 # dedicated channel — no pubobot-enable needed) OR it's a pubobot channel with
 # the 'scoreboard_watch' setting on.
 def _is_scoreboard_channel(message):
+	if not soracle.enabled():
+		return False
 	if message.channel.id in getattr(cfg, 'SCOREBOARD_CHANNELS', []):
 		return True
 	qc = bot.queue_channels.get(message.channel.id)

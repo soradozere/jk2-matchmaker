@@ -461,14 +461,21 @@ async def monthly_stats(ctx, player: Member = None):
 	if not target:
 		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
 
+	# TEMPORARY PRACTICAL JOKE — while Soracle is switched off, =stats greets
+	# everyone with the bit instead of touching Soracle. Remove this block when done.
+	if not soracle.enabled():
+		raise bot.Exc.NotFoundError(f"Hehe, **{get_nick(target)}** you so cute 🥰")
+
 	try:
 		data = await soracle.fetch_player_stats(target.id)
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 
 	if data is None:
+		# TEMPORARY PRACTICAL JOKE — revert to the "not linked to a Soracle player"
+		# message when the bit's over.
 		raise bot.Exc.NotFoundError(
-			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
+			f"Hehe, **{get_nick(target)}** you so cute 🥰"
 		)
 
 	t = data.get('totals') or {}

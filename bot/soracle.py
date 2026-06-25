@@ -7,6 +7,14 @@ import aiohttp
 
 from core.config import cfg
 
+def enabled():
+	""" Master switch for the whole Soracle integration. When False the bot runs as
+		plain PUBobot2 + manual picking: stats/balance commands are hidden, no balance
+		suggestions are posted, and scoreboards aren't uploaded. Defaults to True so a
+		config without the flag behaves as before. """
+	return getattr(cfg, 'SORACLE_ENABLED', True)
+
+
 TIMEOUT = aiohttp.ClientTimeout(total=5)
 # Scoreboard uploads do more work server-side (parse, resolve names, store CSV),
 # so they get a longer budget than the read-only calls.

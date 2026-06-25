@@ -293,7 +293,7 @@ class Match:
 	async def post_balance_suggestions(self, ctx):
 		""" Auto-post Soracle's three balance suggestions for a full 12-player match.
 			Read-only and best-effort — never blocks or breaks the match flow. """
-		if len(self.players) != 12:
+		if not bot.soracle.enabled() or len(self.players) != 12:
 			return
 		try:
 			options = await bot.soracle.fetch_balance([p.id for p in self.players])

@@ -27,6 +27,15 @@ def message_command(*aliases: str):
 	return decorator
 
 
+def soracle_command(*aliases: str):
+	""" Like message_command, but only registers the command when the Soracle
+		integration is enabled. With SORACLE_ENABLED off these commands are never
+		added, so typing them does nothing — the bot runs as plain manual picking. """
+	if not getattr(cfg, 'SORACLE_ENABLED', True):
+		return lambda coro: coro
+	return message_command(*aliases)
+
+
 @dc.event
 async def on_message(message):
 	if not message.content or message.content == "":
@@ -215,16 +224,19 @@ async def _remove_match_player(ctx: MessageContext, args: str = ""):
 	await bot.commands.remove_match_player(ctx, player=member)
 
 
-@message_command('rebalance')
+@soracle_command('rebalance')
 async def _rebalance(ctx: MessageContext, args: str = None):
 	await bot.commands.rebalance(ctx)
 
 
-@message_command('options', 'opts')
+@soracle_command('options', 'opts')
 async def _options(ctx: MessageContext, args: str = None):
 	await bot.commands.balance_options(ctx)
 
 
+# TEMPORARY PRACTICAL JOKE — keep =stats registered even while Soracle is off so
+# the bit fires now; the handler returns the joke when disabled. Restore
+# @soracle_command('stats') when done.
 @message_command('stats')
 async def _monthly_stats(ctx: MessageContext, args: str = None):
 	if not args:
@@ -235,72 +247,72 @@ async def _monthly_stats(ctx: MessageContext, args: str = None):
 	await bot.commands.monthly_stats(ctx, player=member)
 
 
-@message_command('dbs')
+@soracle_command('dbs')
 async def _dbs(ctx: MessageContext, args: str = None):
 	await bot.commands.dbs_leaderboard(ctx)
 
 
-@message_command('dfa')
+@soracle_command('dfa')
 async def _dfa(ctx: MessageContext, args: str = None):
 	await bot.commands.dfa_leaderboard(ctx)
 
 
-@message_command('kills')
+@soracle_command('kills')
 async def _kills(ctx: MessageContext, args: str = None):
 	await bot.commands.kills_leaderboard(ctx)
 
 
-@message_command('deaths')
+@soracle_command('deaths')
 async def _deaths(ctx: MessageContext, args: str = None):
 	await bot.commands.deaths_leaderboard(ctx)
 
 
-@message_command('caps')
+@soracle_command('caps')
 async def _caps(ctx: MessageContext, args: str = None):
 	await bot.commands.caps_leaderboard(ctx)
 
 
-@message_command('potm')
+@soracle_command('potm')
 async def _potm(ctx: MessageContext, args: str = None):
 	await bot.commands.potm(ctx)
 
 
-@message_command('rivals')
+@soracle_command('rivals')
 async def _rivals(ctx: MessageContext, args: str = None):
 	await bot.commands.rivals(ctx)
 
 
-@message_command('grabs')
+@soracle_command('grabs')
 async def _grabs(ctx: MessageContext, args: str = None):
 	await bot.commands.grabs_leaderboard(ctx)
 
 
-@message_command('bc')
+@soracle_command('bc')
 async def _bc(ctx: MessageContext, args: str = None):
 	await bot.commands.bc_leaderboard(ctx)
 
 
-@message_command('flaghold')
+@soracle_command('flaghold')
 async def _flaghold(ctx: MessageContext, args: str = None):
 	await bot.commands.flaghold_leaderboard(ctx)
 
 
-@message_command('returns')
+@soracle_command('returns')
 async def _returns(ctx: MessageContext, args: str = None):
 	await bot.commands.returns_leaderboard(ctx)
 
 
-@message_command('streak', 'streaks')
+@soracle_command('streak', 'streaks')
 async def _streak(ctx: MessageContext, args: str = None):
 	await bot.commands.streaks_leaderboard(ctx)
 
 
-@message_command('redblue')
+@soracle_command('redblue')
 async def _redblue(ctx: MessageContext, args: str = None):
 	await bot.commands.redblue(ctx)
 
 
-@message_command('nemesis')
+@soracle_command('nemesis')
 async def _nemesis(ctx: MessageContext, args: str = None):
 	if not args:
 		await bot.commands.nemesis(ctx, player=None)
@@ -310,7 +322,7 @@ async def _nemesis(ctx: MessageContext, args: str = None):
 	await bot.commands.nemesis(ctx, player=member)
 
 
-@message_command('friend')
+@soracle_command('friend')
 async def _friend(ctx: MessageContext, args: str = None):
 	if not args:
 		await bot.commands.friend(ctx, player=None)
@@ -320,12 +332,12 @@ async def _friend(ctx: MessageContext, args: str = None):
 	await bot.commands.friend(ctx, player=member)
 
 
-@message_command('wrapped')
+@soracle_command('wrapped')
 async def _wrapped(ctx: MessageContext, args: str = None):
 	await bot.commands.wrapped(ctx)
 
 
-@message_command('tier', 'soracle')
+@soracle_command('tier', 'soracle')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:
 		await bot.commands.soracle_info(ctx, player=None)
@@ -341,7 +353,7 @@ async def _leaderboard(ctx: MessageContext, args: str = None):
 	await bot.commands.leaderboard(ctx, page=page)
 
 
-@message_command('lastgame', 'lg')
+@soracle_command('lastgame', 'lg')
 async def _lastgame(ctx: MessageContext, args: str = None):
 	# =lg = last match on Soracle; =lg @player = that player's last game.
 	# The vanilla pubobot view lives on =lastgame_vanilla / =lgv.

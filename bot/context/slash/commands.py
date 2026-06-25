@@ -19,6 +19,17 @@ from . import SlashContext, autocomplete, groups
 guild_kwargs = dict(guild_ids=cfg.DC_SLASH_SERVERS) if len(cfg.DC_SLASH_SERVERS) else dict()
 
 
+def soracle_slash(**kwargs):
+	""" Like dc.slash_command, but only registers the command when the Soracle
+		integration is enabled. With SORACLE_ENABLED off these commands are never
+		synced to Discord, so they don't appear in the slash picker at all. """
+	def deco(func):
+		if not getattr(cfg, 'SORACLE_ENABLED', True):
+			return func
+		return dc.slash_command(**kwargs)(func)
+	return deco
+
+
 def _parse_duration(ctx: SlashContext, s: str):
 	try:
 		return parse_duration(s)
@@ -523,7 +534,7 @@ async def _report(
 ): await run_slash(bot.commands.report, interaction=interaction, result='loss')
 
 
-@dc.slash_command(name='lastgame', description='Last match on Soracle, or a player\'s last game.', **guild_kwargs)
+@soracle_slash(name='lastgame', description='Last match on Soracle, or a player\'s last game.', **guild_kwargs)
 async def _last_game(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),
@@ -572,131 +583,131 @@ async def _pug_settings(
 ): await run_slash(bot.commands.pug_settings, interaction=interaction)
 
 
-@dc.slash_command(name='rebalance', description='Return the match from manual picking to the Soracle balance suggestions.', **guild_kwargs)
+@soracle_slash(name='rebalance', description='Return the match from manual picking to the Soracle balance suggestions.', **guild_kwargs)
 async def _rebalance(
 		interaction: Interaction,
 ): await run_slash(bot.commands.rebalance, interaction=interaction)
 
 
-@dc.slash_command(name='preview', description='Privately preview a balance option (only you see it).', **guild_kwargs)
+@soracle_slash(name='preview', description='Privately preview a balance option (only you see it).', **guild_kwargs)
 async def _preview(
 		interaction: Interaction,
 		option: int = SlashOption(description='Which option to preview', choices={"Option 1": 1, "Option 2": 2, "Option 3": 3}),
 ): await run_slash(bot.commands.balance_preview, interaction=interaction, option=option)
 
 
-@dc.slash_command(name='stats', description='Month-to-date JK2 stats from Soracle (caps, returns, K/D and more).', **guild_kwargs)
+@soracle_slash(name='stats', description='Month-to-date JK2 stats from Soracle (caps, returns, K/D and more).', **guild_kwargs)
 async def _monthly_stats(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),
 ): await run_slash(bot.commands.monthly_stats, interaction=interaction, player=player)
 
 
-@dc.slash_command(name='dbs', description='Top 5 DBS killers this month.', **guild_kwargs)
+@soracle_slash(name='dbs', description='Top 5 DBS killers this month.', **guild_kwargs)
 async def _dbs(
 		interaction: Interaction,
 ): await run_slash(bot.commands.dbs_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='dfa', description='Top 5 DFA killers this month.', **guild_kwargs)
+@soracle_slash(name='dfa', description='Top 5 DFA killers this month.', **guild_kwargs)
 async def _dfa(
 		interaction: Interaction,
 ): await run_slash(bot.commands.dfa_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='kills', description='Top 5 best K/D this month.', **guild_kwargs)
+@soracle_slash(name='kills', description='Top 5 best K/D this month.', **guild_kwargs)
 async def _kills(
 		interaction: Interaction,
 ): await run_slash(bot.commands.kills_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='deaths', description='Top 5 worst K/D this month.', **guild_kwargs)
+@soracle_slash(name='deaths', description='Top 5 worst K/D this month.', **guild_kwargs)
 async def _deaths(
 		interaction: Interaction,
 ): await run_slash(bot.commands.deaths_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='caps', description='Top 5 most caps per run this month.', **guild_kwargs)
+@soracle_slash(name='caps', description='Top 5 most caps per run this month.', **guild_kwargs)
 async def _caps(
 		interaction: Interaction,
 ): await run_slash(bot.commands.caps_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='potm', description='Star Player of the Month.', **guild_kwargs)
+@soracle_slash(name='potm', description='Star Player of the Month.', **guild_kwargs)
 async def _potm(
 		interaction: Interaction,
 ): await run_slash(bot.commands.potm, interaction=interaction)
 
 
-@dc.slash_command(name='rivals', description='Top rivalries of the month.', **guild_kwargs)
+@soracle_slash(name='rivals', description='Top rivalries of the month.', **guild_kwargs)
 async def _rivals(
 		interaction: Interaction,
 ): await run_slash(bot.commands.rivals, interaction=interaction)
 
 
-@dc.slash_command(name='grabs', description='Top 5 flag grabbers this month.', **guild_kwargs)
+@soracle_slash(name='grabs', description='Top 5 flag grabbers this month.', **guild_kwargs)
 async def _grabs(
 		interaction: Interaction,
 ): await run_slash(bot.commands.grabs_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='bc', description='Top 5 base cleaners this month.', **guild_kwargs)
+@soracle_slash(name='bc', description='Top 5 base cleaners this month.', **guild_kwargs)
 async def _bc(
 		interaction: Interaction,
 ): await run_slash(bot.commands.bc_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='flaghold', description='Top 5 by flag hold time this month.', **guild_kwargs)
+@soracle_slash(name='flaghold', description='Top 5 by flag hold time this month.', **guild_kwargs)
 async def _flaghold(
 		interaction: Interaction,
 ): await run_slash(bot.commands.flaghold_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='returns', description='Top 5 returners (per minute) this month.', **guild_kwargs)
+@soracle_slash(name='returns', description='Top 5 returners (per minute) this month.', **guild_kwargs)
 async def _returns(
 		interaction: Interaction,
 ): await run_slash(bot.commands.returns_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='streak', description='Longest win streaks this month.', **guild_kwargs)
+@soracle_slash(name='streak', description='Longest win streaks this month.', **guild_kwargs)
 async def _streak(
 		interaction: Interaction,
 ): await run_slash(bot.commands.streaks_leaderboard, interaction=interaction)
 
 
-@dc.slash_command(name='redblue', description='Red vs Blue win split this month.', **guild_kwargs)
+@soracle_slash(name='redblue', description='Red vs Blue win split this month.', **guild_kwargs)
 async def _redblue(
 		interaction: Interaction,
 ): await run_slash(bot.commands.redblue, interaction=interaction)
 
 
-@dc.slash_command(name='nemesis', description='The opponent who has beaten you most this month.', **guild_kwargs)
+@soracle_slash(name='nemesis', description='The opponent who has beaten you most this month.', **guild_kwargs)
 async def _nemesis(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),
 ): await run_slash(bot.commands.nemesis, interaction=interaction, player=player)
 
 
-@dc.slash_command(name='friend', description='The team-mate you have won the most games with this month.', **guild_kwargs)
+@soracle_slash(name='friend', description='The team-mate you have won the most games with this month.', **guild_kwargs)
 async def _friend(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),
 ): await run_slash(bot.commands.friend, interaction=interaction, player=player)
 
 
-@dc.slash_command(name='options', description="Show Soracle's three balance suggestions for your match (read-only).", **guild_kwargs)
+@soracle_slash(name='options', description="Show Soracle's three balance suggestions for your match (read-only).", **guild_kwargs)
 async def _options(
 		interaction: Interaction,
 ): await run_slash(bot.commands.balance_options, interaction=interaction)
 
 
-@dc.slash_command(name='wrapped', description='The monthly Wrapped summary of awards.', **guild_kwargs)
+@soracle_slash(name='wrapped', description='The monthly Wrapped summary of awards.', **guild_kwargs)
 async def _wrapped(
 		interaction: Interaction,
 ): await run_slash(bot.commands.wrapped, interaction=interaction)
 
 
-@dc.slash_command(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
+@soracle_slash(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
 async def _tier(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),

@@ -28,7 +28,7 @@ class BalanceMenu:
 		self.accepts = set()
 		self.started_at = None
 
-		if self.m.cfg['soracle_balance'] and self.m.cfg['pick_teams'] == "draft":
+		if bot.soracle.enabled() and self.m.cfg['soracle_balance'] and self.m.cfg['pick_teams'] == "draft":
 			self.m.states.append(self.m.BALANCE)
 
 	@property
