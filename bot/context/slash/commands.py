@@ -645,6 +645,12 @@ async def _rivals(
 ): await run_slash(bot.commands.rivals, interaction=interaction)
 
 
+@soracle_slash(name='duos', description="The month's best-winning team-mate pairs.", **guild_kwargs)
+async def _duos(
+		interaction: Interaction,
+): await run_slash(bot.commands.duos, interaction=interaction)
+
+
 @soracle_slash(name='grabs', description='Top 5 flag grabbers this month.', **guild_kwargs)
 async def _grabs(
 		interaction: Interaction,
@@ -681,14 +687,14 @@ async def _redblue(
 ): await run_slash(bot.commands.redblue, interaction=interaction)
 
 
-@soracle_slash(name='nemesis', description='The opponent who has beaten you most this month.', **guild_kwargs)
+@soracle_slash(name='nemesis', description='The opponents who have beaten you most this month.', **guild_kwargs)
 async def _nemesis(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),
 ): await run_slash(bot.commands.nemesis, interaction=interaction, player=player)
 
 
-@soracle_slash(name='friend', description='The team-mate you have won the most games with this month.', **guild_kwargs)
+@soracle_slash(name='friend', description='The team-mates you win the most games with this month.', **guild_kwargs)
 async def _friend(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),

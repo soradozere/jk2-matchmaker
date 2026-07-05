@@ -279,6 +279,11 @@ async def _rivals(ctx: MessageContext, args: str = None):
 	await bot.commands.rivals(ctx)
 
 
+@soracle_command('duos')
+async def _duos(ctx: MessageContext, args: str = None):
+	await bot.commands.duos(ctx)
+
+
 @soracle_command('grabs')
 async def _grabs(ctx: MessageContext, args: str = None):
 	await bot.commands.grabs_leaderboard(ctx)

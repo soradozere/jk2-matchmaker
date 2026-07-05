@@ -2,7 +2,7 @@ __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
 	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
-	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'wrapped', 'last_game_soracle',
+	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'duos', 'wrapped', 'last_game_soracle',
 	'balance_options'
 ]
 
@@ -152,6 +152,30 @@ async def rivals(ctx):
 	await ctx.reply(embed=embed)
 
 
+async def duos(ctx):
+	try:
+		data = await soracle.fetch_monthly_report()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	pairs = data.get('duos') or []
+	embed = Embed(
+		title=f"Top duos — {data.get('month', 'this month')}",
+		colour=Colour(0x4ae24a),
+		url=cfg.SORACLE_API_URL
+	)
+	if not pairs:
+		embed.description = ctx.qc.gt("No duos have formed yet this month.")
+	else:
+		lines = []
+		for i, d in enumerate(pairs):
+			pct = round(d['wins'] * 100 / d['games']) if d['games'] else 0
+			lines.append(f"**{i + 1}.** {d['player1']} & {d['player2']} — **{pct}%** ({d['wins']} of {d['games']})")
+		embed.description = "\n".join(lines)
+		embed.set_footer(text="The month's best-winning team-mate pairs — ranked by win rate together (min 4 games).")
+	await ctx.reply(embed=embed)
+
+
 async def wrapped(ctx):
 	await bot.wrapped.show(ctx)
 
@@ -205,15 +229,30 @@ async def nemesis(ctx, player: Member = None):
 			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
 		)
 
-	nem = data.get('nemesis')
-	embed = Embed(title=f"Nemesis — {data.get('name') or get_nick(target)}", colour=Colour(0xe24b4a), url=cfg.SORACLE_API_URL)
-	if not nem:
+	nemeses = data.get('nemeses')
+	if nemeses is None:  # pre-top-3 Soracle: fall back to the single nemesis
+		nemeses = [n] if (n := data.get('nemesis')) else []
+	title = "Nemesis" if len(nemeses) <= 1 else "Nemeses"
+	embed = Embed(title=f"{title} — {data.get('name') or get_nick(target)}", colour=Colour(0xe24b4a), url=cfg.SORACLE_API_URL)
+
+	def _pct(nem):
+		return round(nem['theirWins'] * 100 / nem['meetings']) if nem['meetings'] else 0
+
+	if not nemeses:
 		embed.description = ctx.qc.gt("No nemesis yet this month — not enough games against any one opponent.")
-	else:
-		pct = round(nem['theirWins'] * 100 / nem['meetings']) if nem['meetings'] else 0
+	elif len(nemeses) == 1:
+		nem = nemeses[0]
 		embed.description = "**{opp}** has beaten you in **{pct}%** of your meetings this month (**{tw} of {meet}**; you've won **{mw}**).".format(
-			opp=nem['name'], pct=pct, tw=nem['theirWins'], mw=nem['myWins'], meet=nem['meetings']
+			opp=nem['name'], pct=_pct(nem), tw=nem['theirWins'], mw=nem['myWins'], meet=nem['meetings']
 		)
+	else:
+		embed.description = "\n".join(
+			"**{i}.** **{opp}** — beaten you **{pct}%** (**{tw} of {meet}**)".format(
+				i=i + 1, opp=nem['name'], pct=_pct(nem), tw=nem['theirWins'], meet=nem['meetings']
+			)
+			for i, nem in enumerate(nemeses)
+		)
+		embed.set_footer(text="Your worst head-to-heads this month — ranked by their win rate against you.")
 	await ctx.reply(embed=embed)
 
 
@@ -231,15 +270,30 @@ async def friend(ctx, player: Member = None):
 			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
 		)
 
-	fr = data.get('friend')
-	embed = Embed(title=f"Best teammate — {data.get('name') or get_nick(target)}", colour=Colour(0x4ae24a), url=cfg.SORACLE_API_URL)
-	if not fr:
+	friends = data.get('friends')
+	if friends is None:  # pre-top-3 Soracle: fall back to the single friend
+		friends = [f] if (f := data.get('friend')) else []
+	title = "Best teammate" if len(friends) <= 1 else "Best teammates"
+	embed = Embed(title=f"{title} — {data.get('name') or get_nick(target)}", colour=Colour(0x4ae24a), url=cfg.SORACLE_API_URL)
+
+	def _pct(fr):
+		return round(fr['wins'] * 100 / fr['games']) if fr['games'] else 0
+
+	if not friends:
 		embed.description = ctx.qc.gt("No best teammate yet this month — not enough games alongside any one player.")
-	else:
-		pct = round(fr['wins'] * 100 / fr['games']) if fr['games'] else 0
+	elif len(friends) == 1:
+		fr = friends[0]
 		embed.description = "You win **{pct}%** of games alongside **{name}** this month (**{w} of {g}**).".format(
-			name=fr['name'], pct=pct, w=fr['wins'], g=fr['games']
+			name=fr['name'], pct=_pct(fr), w=fr['wins'], g=fr['games']
 		)
+	else:
+		embed.description = "\n".join(
+			"**{i}.** **{name}** — **{pct}%** together (**{w} of {g}**)".format(
+				i=i + 1, name=fr['name'], pct=_pct(fr), w=fr['wins'], g=fr['games']
+			)
+			for i, fr in enumerate(friends)
+		)
+		embed.set_footer(text="Your best team-mates this month — ranked by win rate on the same team.")
 	await ctx.reply(embed=embed)
 
 
@@ -435,13 +489,12 @@ async def returns_leaderboard(ctx):
 
 
 async def caps_leaderboard(ctx):
-	# Caps efficiency: minutes of flag hold per cap (lower = better). Matches Soracle's
-	# "Most Caps per Run": regular cappers only (caps >= 40% of the month's max) plus the
-	# 30%-of-matches qualifier.
+	# Caps efficiency: minutes of flag hold per cap (lower = better). "Most caps per run":
+	# regular cappers only (caps >= 30% of the month's max) plus the 30%-of-matches qualifier.
 	data, players, min_matches = await _monthly_players(ctx)
 	qualified = [p for p in players if p.get('matches', 0) >= min_matches]
 	max_caps = max((p.get('captures', 0) for p in qualified), default=0)
-	floor = max_caps * 0.4
+	floor = max_caps * 0.3
 	eligible = [p for p in qualified if p.get('captures', 0) >= floor and p.get('captures') and p.get('flagHoldMs')]
 	top = sorted(eligible, key=lambda p: p['flagHoldMs'] / p['captures'])[:5]
 	embed = Embed(title=f"Most caps per run — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
