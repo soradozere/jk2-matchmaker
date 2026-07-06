@@ -152,11 +152,11 @@ async def report(ctx, match: bot.Match, result):
 	else:
 		raise bot.Exc.ValueError("Invalid result value.")
 
-	# A real result was recorded (loss/draw) — nudge captains to log it on Soracle.
+	# A real result was recorded (loss/draw) — nudge captains to log it on the site.
 	try:
 		await ctx.notice(ctx.qc.gt(
-			"📊 Captains: log this game on Soracle → {url}"
-		).format(url=cfg.SORACLE_API_URL))
+			"📊 Captains: log this game → {url}"
+		).format(url=getattr(cfg, 'PUBLIC_SITE_URL', 'https://jk2ctf.vercel.app')))
 	except Exception:
 		pass
 

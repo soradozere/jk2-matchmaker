@@ -346,7 +346,7 @@ class Match:
 			player=member.mention, left=len(self.players)
 		)
 		if len(self.players) == 12 and self.cfg['soracle_balance']:
-			message += "\n" + self.gt("A captain can type {cmd} for fresh Soracle suggestions.").format(
+			message += "\n" + self.gt("A captain can type {cmd} for fresh balance suggestions.").format(
 				cmd=f"`{self.qc.cfg.prefix}rebalance`"
 			)
 		await ctx.notice(message)

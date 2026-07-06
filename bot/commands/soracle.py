@@ -3,11 +3,13 @@ __all__ = [
 	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
 	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'duos', 'wrapped', 'last_game_soracle',
-	'balance_options'
+	'owneds', 'balance_options'
 ]
 
+import re
 from math import ceil
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from nextcord import Member, Embed, Colour
 
@@ -17,8 +19,20 @@ from core.utils import find, get_nick
 import bot
 from bot import soracle
 
-# Soracle role names -> community names
+# Site role names -> community names
 ROLE_DISPLAY = {"Cleaner": "BC"}
+
+# Public site for player-facing links (embed titles, profile links). Kept
+# separate from SORACLE_API_URL, which stays the API base the bot talks to.
+SITE_URL = getattr(cfg, 'PUBLIC_SITE_URL', 'https://jk2ctf.vercel.app')
+
+UNLINKED = "**{name}** isn't linked to a site profile yet — an admin can link them at {url}"
+
+
+def _profile_url(name):
+	""" Public profile URL for a player name — same slug rules as the site
+		(lowercase, whitespace -> dashes, URI-encoded). """
+	return f"{SITE_URL}/player/{quote(re.sub(r'\\s+', '-', name.strip().lower()))}"
 
 
 async def soracle_info(ctx, player: Member = None):
@@ -33,7 +47,7 @@ async def soracle_info(ctx, player: Member = None):
 
 	if data is None:
 		raise bot.Exc.NotFoundError(
-			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
+			UNLINKED.format(name=get_nick(target), url=SITE_URL)
 		)
 
 	embed = Embed(title=f"__{data.get('name') or get_nick(target)}__", colour=Colour(0x7289DA))
@@ -48,7 +62,6 @@ async def soracle_info(ctx, player: Member = None):
 	embed.add_field(name="Roles", value=roles_str or "—", inline=True)
 	if target.display_avatar:
 		embed.set_thumbnail(url=target.display_avatar.url)
-	embed.set_footer(text="Soracle")
 	await ctx.reply(embed=embed)
 
 
@@ -68,7 +81,7 @@ async def _stat_leaderboard(ctx, stat, title, unit=""):
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 
-	embed = Embed(title=f"{title} — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"{title} — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	embed.description = _board_lines(ctx, data.get('top'), unit)
 	await ctx.reply(embed=embed)
 
@@ -82,7 +95,7 @@ async def dbs_leaderboard(ctx):
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 
-	embed = Embed(title=f"DBS leaderboards — {kills.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"DBS leaderboards — {kills.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	embed.add_field(name="🗡️ Top DBS killers", value=_board_lines(ctx, kills.get('top')), inline=False)
 	embed.add_field(name="🚩 Top DBS return kills", value=_board_lines(ctx, returns.get('top')), inline=False)
 	await ctx.reply(embed=embed)
@@ -120,7 +133,7 @@ async def potm(ctx):
 	embed = Embed(
 		title=f"⭐ Star Player of the Month — {data.get('month', 'this month')}",
 		colour=Colour(0xf1c40f),
-		url=cfg.SORACLE_API_URL
+		url=SITE_URL
 	)
 	if not star:
 		embed.description = ctx.qc.gt("No qualifying player yet this month.")
@@ -145,7 +158,7 @@ async def rivals(ctx):
 	embed = Embed(
 		title=f"Top rivalries — {data.get('month', 'this month')}",
 		colour=Colour(0x50e3c2),
-		url=cfg.SORACLE_API_URL
+		url=SITE_URL
 	)
 	if not rivalries:
 		embed.description = ctx.qc.gt("No rivalries have formed yet this month.")
@@ -176,7 +189,7 @@ async def duos(ctx):
 	embed = Embed(
 		title=f"Top duos — {data.get('month', 'this month')}",
 		colour=Colour(0x4ae24a),
-		url=cfg.SORACLE_API_URL
+		url=SITE_URL
 	)
 	if not pairs:
 		embed.description = ctx.qc.gt("No duos have formed yet this month.")
@@ -200,7 +213,7 @@ async def streaks_leaderboard(ctx):
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 	streaks = data.get('streaks') or []
-	embed = Embed(title=f"Longest win streaks — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"Longest win streaks — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not streaks:
 		embed.description = ctx.qc.gt("No win streaks yet this month.")
 	else:
@@ -217,7 +230,7 @@ async def redblue(ctx):
 		raise bot.Exc.NotFoundError(str(e))
 	rb = data.get('redBlue') or {}
 	total = rb.get('total') or 0
-	embed = Embed(title=f"🔥 Red vs Blue 💧 — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"🔥 Red vs Blue 💧 — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not total:
 		embed.description = ctx.qc.gt("No matches recorded this month yet.")
 	else:
@@ -240,14 +253,14 @@ async def nemesis(ctx, player: Member = None):
 		raise bot.Exc.NotFoundError(str(e))
 	if data is None:
 		raise bot.Exc.NotFoundError(
-			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
+			UNLINKED.format(name=get_nick(target), url=SITE_URL)
 		)
 
 	nemeses = data.get('nemeses')
 	if nemeses is None:  # pre-top-3 Soracle: fall back to the single nemesis
 		nemeses = [n] if (n := data.get('nemesis')) else []
 	title = "Nemesis" if len(nemeses) <= 1 else "Nemeses"
-	embed = Embed(title=f"{title} — {data.get('name') or get_nick(target)}", colour=Colour(0xe24b4a), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"{title} — {data.get('name') or get_nick(target)}", colour=Colour(0xe24b4a), url=SITE_URL)
 
 	def _pct(nem):
 		return round(nem['theirWins'] * 100 / nem['meetings']) if nem['meetings'] else 0
@@ -281,14 +294,14 @@ async def friend(ctx, player: Member = None):
 		raise bot.Exc.NotFoundError(str(e))
 	if data is None:
 		raise bot.Exc.NotFoundError(
-			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
+			UNLINKED.format(name=get_nick(target), url=SITE_URL)
 		)
 
 	friends = data.get('friends')
 	if friends is None:  # pre-top-3 Soracle: fall back to the single friend
 		friends = [f] if (f := data.get('friend')) else []
 	title = "Best teammate" if len(friends) <= 1 else "Best teammates"
-	embed = Embed(title=f"{title} — {data.get('name') or get_nick(target)}", colour=Colour(0x4ae24a), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"{title} — {data.get('name') or get_nick(target)}", colour=Colour(0x4ae24a), url=SITE_URL)
 
 	def _pct(fr):
 		return round(fr['wins'] * 100 / fr['games']) if fr['games'] else 0
@@ -349,16 +362,16 @@ async def last_game_soracle(ctx, player: Member = None):
 	if data is None:
 		if target:
 			raise bot.Exc.NotFoundError(
-				f"No recorded games found for **{get_nick(target)}** on Soracle (they may not be linked)."
+				f"No recorded games found for **{get_nick(target)}** (they may not be linked)."
 			)
-		raise bot.Exc.NotFoundError(ctx.qc.gt("No matches have been recorded on Soracle yet."))
+		raise bot.Exc.NotFoundError(ctx.qc.gt("No matches have been recorded yet."))
 
 	winner = data.get('winner')
 	colour = Colour(0xe24b4a) if winner == 'Red' else Colour(0x4a90e2) if winner == 'Blue' else Colour(0x95a5a6)
 	when = _time_ago(data.get('date')) or "recently"
 
 	heading = f"{get_nick(target)}'s last game" if target else "Last game"
-	embed = Embed(title=f"{heading} — {when}", colour=colour, url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"{heading} — {when}", colour=colour, url=SITE_URL)
 	result = ctx.qc.gt("Tie") if winner == 'Tie' else f"{winner} win"
 	embed.description = "🔥 **Red {rs}** — **{bs} Blue** 💧 · {result} · {mt} pick".format(
 		rs=data.get('redScore', 0), bs=data.get('blueScore', 0), result=result,
@@ -414,14 +427,14 @@ async def balance_options(ctx):
 		raise bot.Exc.NotFoundError(ctx.qc.gt("You're not in an active match."))
 	if len(match.players) != 12:
 		raise bot.Exc.MatchStateError(ctx.qc.gt(
-			"Soracle balancing needs exactly 12 players (this match has {n})."
+			"Auto-balancing needs exactly 12 players (this match has {n})."
 		).format(n=len(match.players)))
 
 	try:
 		options = await soracle.fetch_balance([p.id for p in match.players])
 	except soracle.UnlinkedError as e:
 		raise bot.Exc.NotFoundError(ctx.qc.gt(
-			"{players} not linked to Soracle, so teams can't be suggested. An admin can link them."
+			"{players} not linked to a site profile, so teams can't be suggested. An admin can link them."
 		).format(players=", ".join(f"<@{i}>" for i in e.unlinked_ids)))
 	except soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
@@ -442,7 +455,7 @@ async def kills_leaderboard(ctx):
 	# Best K/D. Min-games floor so one big game can't top the board; needs deaths>0.
 	ranked = [p for p in players if p.get('deaths') and p.get('matches', 0) >= min_matches]
 	top = sorted(ranked, key=lambda p: p['kills'] / p['deaths'], reverse=True)[:5]
-	embed = Embed(title=f"Best K/D — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"Best K/D — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("Not enough games yet for a K/D ranking.")
 	else:
@@ -456,7 +469,7 @@ async def deaths_leaderboard(ctx):
 	# Worst K/D, same min-games floor.
 	ranked = [p for p in players if p.get('deaths') and p.get('matches', 0) >= min_matches]
 	bottom = sorted(ranked, key=lambda p: p['kills'] / p['deaths'])[:5]
-	embed = Embed(title=f"Worst K/D — {data.get('month', 'this month')}", colour=Colour(0xe24b4a), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"Worst K/D — {data.get('month', 'this month')}", colour=Colour(0xe24b4a), url=SITE_URL)
 	if not bottom:
 		embed.description = ctx.qc.gt("Not enough games yet for a K/D ranking.")
 	else:
@@ -468,7 +481,7 @@ async def deaths_leaderboard(ctx):
 async def flaghold_leaderboard(ctx):
 	data, players, _ = await _monthly_players(ctx)
 	top = sorted([p for p in players if p.get('flagHoldMs')], key=lambda p: p['flagHoldMs'], reverse=True)[:5]
-	embed = Embed(title=f"Most flag hold — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"Most flag hold — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("No flag hold recorded this month yet.")
 	else:
@@ -490,7 +503,7 @@ async def returns_leaderboard(ctx):
 		if p.get('matches', 0) >= min_matches and p.get('returns') and p.get('timePlayed')
 	]
 	top = sorted(eligible, key=lambda p: p['returns'] / p['timePlayed'], reverse=True)[:5]
-	embed = Embed(title=f"Top returners — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"Top returners — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("Not enough returns data this month yet.")
 	else:
@@ -511,7 +524,7 @@ async def caps_leaderboard(ctx):
 	floor = max_caps * 0.3
 	eligible = [p for p in qualified if p.get('captures', 0) >= floor and p.get('captures') and p.get('flagHoldMs')]
 	top = sorted(eligible, key=lambda p: p['flagHoldMs'] / p['captures'])[:5]
-	embed = Embed(title=f"Most caps per run — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed = Embed(title=f"Most caps per run — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("Not enough capping data this month yet.")
 	else:
@@ -535,14 +548,15 @@ async def monthly_stats(ctx, player: Member = None):
 
 	if data is None:
 		raise bot.Exc.NotFoundError(
-			f"**{get_nick(target)}** is not linked to a Soracle player. An admin can link them on Soracle."
+			UNLINKED.format(name=get_nick(target), url=SITE_URL)
 		)
 
 	t = data.get('totals') or {}
+	profile_url = _profile_url(data.get('name') or get_nick(target))
 	embed = Embed(
 		title=f"__{data.get('name') or get_nick(target)}__ — {data.get('month', 'this month')}",
 		colour=Colour(0x50e3c2),
-		url=cfg.SORACLE_API_URL
+		url=profile_url
 	)
 	if tooltip := data.get('tooltip'):
 		embed.description = f"*{tooltip}*"
@@ -577,10 +591,53 @@ async def monthly_stats(ctx, player: Member = None):
 			)
 	embed.add_field(
 		name="—",
-		value=ctx.qc.gt("See the full highlights of the month at {url}").format(url=cfg.SORACLE_API_URL),
+		value=ctx.qc.gt("See your full profile at {url}").format(url=profile_url),
 		inline=False
 	)
 	if target.display_avatar:
 		embed.set_thumbnail(url=target.display_avatar.url)
-	embed.set_footer(text="Soracle")
+	await ctx.reply(embed=embed)
+
+
+async def owneds(ctx, player: Member = None):
+	""" =owneds — two top-3 kill-matchup boards for a player this month: the
+		opponents they're out-fragging across shared stat-tracked games, and the
+		opponents out-fragging them. Ranked by total kill differential. """
+	target = ctx.author if not player else await ctx.get_member(player)
+	if not target:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+
+	try:
+		data = await soracle.fetch_owneds(target.id)
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	if data is None:
+		raise bot.Exc.NotFoundError(UNLINKED.format(name=get_nick(target), url=SITE_URL))
+
+	name = data.get('name') or get_nick(target)
+	embed = Embed(title=f"Owneds — {name} ({data.get('month', 'this month')})", colour=Colour(0x9b59b6), url=_profile_url(name))
+
+	def _lines(rows, sign):
+		return "\n".join(
+			"**{i}.** **{opp}** — {sign}{diff} kills (**{mine}–{theirs}** over {g} games)".format(
+				i=i + 1, opp=r['name'], sign=sign, diff=abs(r['diff']),
+				mine=r['myKills'], theirs=r['theirKills'], g=r['games']
+			) for i, r in enumerate(rows)
+		)
+
+	owned, owned_by = data.get('owned') or [], data.get('ownedBy') or []
+	if not owned and not owned_by:
+		embed.description = ctx.qc.gt("No kill matchups yet this month — play a few more stat-tracked games.")
+	else:
+		embed.add_field(
+			name="😈 Owning",
+			value=_lines(owned, "+") or ctx.qc.gt("No one yet — get fragging."),
+			inline=False
+		)
+		embed.add_field(
+			name="💀 Owned by",
+			value=_lines(owned_by, "−") or ctx.qc.gt("No one — untouchable."),
+			inline=False
+		)
+		embed.set_footer(text="Kill differential across this month's shared stat-tracked games (min 2 together).")
 	await ctx.reply(embed=embed)
