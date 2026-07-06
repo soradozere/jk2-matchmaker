@@ -52,26 +52,40 @@ async def soracle_info(ctx, player: Member = None):
 	await ctx.reply(embed=embed)
 
 
+def _board_lines(ctx, top, unit=""):
+	""" Render a top-5 board's rows, or the empty-state string. """
+	if not top:
+		return ctx.qc.gt("Nothing recorded this month yet.")
+	return "\n".join(
+		f"**{n + 1}.** {r['name']} — **{r['value']}**{unit}" for n, r in enumerate(top)
+	)
+
+
 async def _stat_leaderboard(ctx, stat, title, unit=""):
-	""" Simple top-5-by-summed-stat board (=dbs, =dfa). """
+	""" Simple top-5-by-summed-stat board (=dfa, =grabs, ...). """
 	try:
 		data = await soracle.fetch_stat_leaderboard(stat)
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 
-	top = data.get('top') or []
 	embed = Embed(title=f"{title} — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
-	if not top:
-		embed.description = ctx.qc.gt("Nothing recorded this month yet.")
-	else:
-		embed.description = "\n".join(
-			f"**{n + 1}.** {r['name']} — **{r['value']}**{unit}" for n, r in enumerate(top)
-		)
+	embed.description = _board_lines(ctx, data.get('top'), unit)
 	await ctx.reply(embed=embed)
 
 
 async def dbs_leaderboard(ctx):
-	await _stat_leaderboard(ctx, 'dbs_kills', "Top DBS killers")
+	# Two boards for the price of one: most DBS kills, and most DBS *return* kills
+	# (killing the enemy flag carrier with a DBS). Both summed over the month.
+	try:
+		kills = await soracle.fetch_stat_leaderboard('dbs_kills')
+		returns = await soracle.fetch_stat_leaderboard('dbs_returns')
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	embed = Embed(title=f"DBS leaderboards — {kills.get('month', 'this month')}", colour=Colour(0x50e3c2), url=cfg.SORACLE_API_URL)
+	embed.add_field(name="🗡️ Top DBS killers", value=_board_lines(ctx, kills.get('top')), inline=False)
+	embed.add_field(name="🚩 Top DBS return kills", value=_board_lines(ctx, returns.get('top')), inline=False)
+	await ctx.reply(embed=embed)
 
 
 async def dfa_leaderboard(ctx):
