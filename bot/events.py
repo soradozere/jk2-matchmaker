@@ -86,8 +86,8 @@ async def handle_scoreboard_attachments(message):
 		except soracle.SoracleError as e:
 			log.error(f"Failed to upload scoreboard '{attachment.filename}' to Soracle: {e}")
 			await _dm_owner(
-				f"⚠️ Couldn't reach Soracle to upload scoreboard `{attachment.filename}` "
-				f"({where}). The CSV is still in the channel — re-post it once Soracle is back."
+				f"⚠️ Couldn't reach the stats site to upload scoreboard `{attachment.filename}` "
+				f"({where}). The CSV is still in the channel — re-post it once the site is back."
 			)
 			continue
 		except Exception as e:
@@ -100,7 +100,7 @@ async def handle_scoreboard_attachments(message):
 		# rejected it (bad CSV, auth, server error), which warrants a heads-up.
 		if status >= 400:
 			await _dm_owner(
-				f"⚠️ Soracle rejected scoreboard `{attachment.filename}` ({where}) — "
+				f"⚠️ The stats site rejected scoreboard `{attachment.filename}` ({where}) — "
 				f"HTTP {status}: {data}. The CSV is still in the channel."
 			)
 

@@ -45,7 +45,7 @@ async def _request(method, path, json_body=None):
 					data = None
 				return resp.status, data
 	except (aiohttp.ClientError, asyncio.TimeoutError):
-		raise SoracleError("Could not reach Soracle.")
+		raise SoracleError("Could not reach the stats site.")
 
 
 async def upload_scoreboard(csv_bytes, filename, *, guild_id=None, channel_id=None,
@@ -55,7 +55,7 @@ async def upload_scoreboard(csv_bytes, filename, *, guild_id=None, channel_id=No
 		Returns (status, data): on success status 200 with data like
 		{pending_id, distinct, matched, unmatched}, or {skipped: True, reason}
 		for sub-12-player games, or {duplicate: True} on a repeat of the same
-		Discord message. Raises SoracleError if Soracle is unreachable. """
+		Discord message. Raises SoracleError if the stats site is unreachable. """
 	url = cfg.SORACLE_API_URL + "/api/bot/scoreboard"
 	headers = {'Authorization': f"Bearer {cfg.SORACLE_API_SECRET}"}
 
@@ -81,7 +81,7 @@ async def upload_scoreboard(csv_bytes, filename, *, guild_id=None, channel_id=No
 					data = None
 				return resp.status, data
 	except (aiohttp.ClientError, asyncio.TimeoutError):
-		raise SoracleError("Could not reach Soracle.")
+		raise SoracleError("Could not reach the stats site.")
 
 
 async def fetch_player(discord_id):
@@ -90,7 +90,7 @@ async def fetch_player(discord_id):
 	if status == 404:
 		return None
 	if status != 200 or data is None:
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
@@ -100,7 +100,7 @@ async def fetch_player_stats(discord_id):
 	if status == 404:
 		return None
 	if status != 200 or data is None:
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
@@ -110,7 +110,7 @@ async def fetch_nemesis(discord_id):
 	if status == 404:
 		return None
 	if status != 200 or data is None:
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
@@ -120,7 +120,17 @@ async def fetch_friend(discord_id):
 	if status == 404:
 		return None
 	if status != 200 or data is None:
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
+async def fetch_owneds(discord_id):
+	""" A player's monthly kill-matchup boards (owned / ownedBy), or None if unlinked. """
+	status, data = await _request('GET', f"/api/bot/owneds/by-discord/{discord_id}")
+	if status == 404:
+		return None
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
@@ -133,7 +143,7 @@ async def fetch_last_match(discord_id=None):
 	if status == 404:
 		return None
 	if status != 200 or data is None:
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
@@ -145,7 +155,7 @@ async def fetch_monthly_report(year=None, month=None):
 	""" Star player + rivalries for a month (default current): dict(month, starPlayer, rivalries, ...). """
 	status, data = await _request('GET', "/api/bot/monthly-report" + _month_qs(year, month))
 	if status != 200 or data is None:
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
@@ -153,7 +163,7 @@ async def fetch_monthly_aggregates(year=None, month=None):
 	""" Per-player summed stats for a month (default current): dict(month, matchCount, players=[...]). """
 	status, data = await _request('GET', "/api/bot/monthly-aggregates" + _month_qs(year, month))
 	if status != 200 or data is None:
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
@@ -161,7 +171,7 @@ async def fetch_stat_leaderboard(stat):
 	""" Top players by a match-stat for the current month: dict(stat, label, month, top=[{name, value}]). """
 	status, data = await _request('GET', f"/api/bot/leaderboard/{stat}")
 	if status != 200 or data is None:
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
@@ -176,5 +186,5 @@ async def fetch_balance(discord_ids):
 	if status == 422 and data and data.get('error') == "unlinked":
 		raise UnlinkedError(data.get('unlinkedIds') or [])
 	if status != 200 or not data or not data.get('options'):
-		raise SoracleError(f"Soracle returned an unexpected response (HTTP {status}).")
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data['options']

@@ -133,7 +133,7 @@ class QueueChannel:
 				section="General",
 				default=0,
 				notnull=True,
-				description="Upload end-of-match scoreboard .csv attachments posted here to Soracle's approval queue."
+				description="Upload end-of-match scoreboard .csv attachments posted here to the site's approval queue."
 			),
 			Variables.DurationVar(
 				"expire_time",

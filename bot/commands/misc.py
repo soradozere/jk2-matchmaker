@@ -172,7 +172,7 @@ async def commands_help(ctx, queue: str = None):
 	]
 	if soracle_on:
 		stat_lines = [
-			f"`{p}tier [@player]` — Soracle tier & roles",
+			f"`{p}tier [@player]` — player tier & roles",
 			f"`{p}stats [@player]` — month-to-date stats",
 		] + stat_lines
 	embed.add_field(name="Stats & ranks", value="\n".join(stat_lines), inline=False)
