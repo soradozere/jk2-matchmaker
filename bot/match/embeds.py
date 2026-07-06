@@ -114,7 +114,7 @@ class Embeds:
 				)
 
 			if not self.m.cfg['soracle_balance'] and len(self.m.players) == 12:
-				msg += "\n" + self.m.gt("💡 Use `{p}options` to see Soracle's balance suggestions.").format(
+				msg += "\n" + self.m.gt("💡 Use `{p}options` to see the balance suggestions.").format(
 					p=self.m.qc.cfg.prefix
 				)
 
@@ -167,7 +167,7 @@ class Embeds:
 		""" All Soracle suggestions in one read-only embed (=options / auto-post). """
 		embed = Embed(
 			colour=Colour(0x50e3c2),
-			title=self.m.gt("__**{queue}** — Soracle balance suggestions__").format(
+			title=self.m.gt("__**{queue}** — balance suggestions__").format(
 				queue=self.m.queue.name[0].upper() + self.m.queue.name[1:]
 			)
 		)

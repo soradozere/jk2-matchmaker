@@ -49,7 +49,7 @@ class BalanceMenu:
 		self.started_at = None
 		if len(self.m.players) > 12:
 			await ctx.notice("\n".join((
-				self.m.gt("Soracle balancing supports 12 players — proceeding to manual picks."),
+				self.m.gt("Auto-balancing supports 12 players — proceeding to manual picks."),
 				self.m.gt("Go to {url} to create a balance based on your own selection of 12 players.").format(
 					url=cfg.SORACLE_API_URL
 				)
@@ -66,16 +66,16 @@ class BalanceMenu:
 			self.options = await soracle.fetch_balance([p.id for p in self.m.players])
 		except soracle.UnlinkedError as e:
 			await ctx.notice("\n".join((
-				self.m.gt("{players} not linked to Soracle — skipping balance suggestions.").format(
+				self.m.gt("{players} not linked to a site profile — skipping balance suggestions.").format(
 					players=join_and([f"<@{i}>" for i in e.unlinked_ids])
 				),
-				self.m.gt("An admin can link them on Soracle. Proceeding to manual picks.")
+				self.m.gt("An admin can link them on the site. Proceeding to manual picks.")
 			)))
 			await self.m.next_state(ctx)
 			return
 		except soracle.SoracleError as e:
 			log.error(f"Soracle balance request failed for match {self.m.id}: {str(e)}")
-			await ctx.notice(self.m.gt("Could not get balance suggestions from Soracle, proceeding to manual picks."))
+			await ctx.notice(self.m.gt("Could not fetch balance suggestions, proceeding to manual picks."))
 			await self.m.next_state(ctx)
 			return
 
@@ -182,7 +182,7 @@ class BalanceMenu:
 
 		if sorted((p.id for t in teams for p in t)) != sorted(members.keys()):
 			log.error(f"Soracle option {self.idx} for match {self.m.id} did not map onto the match players.")
-			await ctx.notice(self.m.gt("Could not apply the Soracle suggestion, proceeding to manual picks."))
+			await ctx.notice(self.m.gt("Could not apply the balance suggestion, proceeding to manual picks."))
 			await self.m.next_state(ctx)
 			return
 
@@ -216,7 +216,7 @@ class BalanceMenu:
 			return
 		await ctx.notice("\n".join((
 			self.m.gt("Proceeding to manual team picking."),
-			self.m.gt("A captain can type {cmd} to return to the Soracle suggestions.").format(
+			self.m.gt("A captain can type {cmd} to return to the balance suggestions.").format(
 				cmd=f"`{self.m.qc.cfg.prefix}rebalance`"
 			)
 		)))
@@ -228,7 +228,7 @@ class BalanceMenu:
 		if self.m.state not in (self.m.DRAFT, self.m.WAITING_REPORT):
 			raise bot.Exc.MatchStateError(self.m.gt("The match has already finished."))
 		if not (self.m.cfg['soracle_balance'] and self.m.cfg['pick_teams'] == "draft"):
-			raise bot.Exc.NotFoundError(self.m.gt("Soracle balancing is not enabled on this queue."))
+			raise bot.Exc.NotFoundError(self.m.gt("Auto-balancing is not enabled on this queue."))
 		# The menu buttons belong to whoever leads the teams NOW — a =capfor'd captain
 		# keeps control through a rebalance instead of reverting to the auto-picked pair.
 		current_leads = [t[0] for t in self.m.teams[:2] if len(t)]
@@ -250,7 +250,7 @@ class BalanceMenu:
 		else:
 			self.m.states.insert(0, self.m.DRAFT)
 		self.m.state = self.m.BALANCE
-		await ctx.notice(self.m.gt("Returning to the Soracle balance suggestions..."))
+		await ctx.notice(self.m.gt("Returning to the balance suggestions..."))
 		await self.start(ctx)
 
 	async def close_menu(self, keep=False):

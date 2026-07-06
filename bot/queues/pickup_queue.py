@@ -127,21 +127,21 @@ class PickupQueue:
 			),
 			Variables.BoolVar(
 				"soracle_balance",
-				display="Soracle balance",
+				display="Auto balance",
 				section="Teams",
 				default=0,
 				notnull=True,
 				description="\n".join([
-					"Suggest balanced teams from Soracle when the queue starts (12-player queues, 'draft' pick mode).",
+					"Suggest balanced teams automatically when the queue starts (12-player queues, 'draft' pick mode).",
 					"Captains can accept a suggestion, cycle the options or fall back to manual picking."
 				])
 			),
 			Variables.DurationVar(
 				"soracle_balance_timeout",
-				display="Soracle balance timeout",
+				display="Auto balance timeout",
 				section="Teams",
 				description="\n".join([
-					"How long captains get to decide on a Soracle suggestion before the displayed option is auto-accepted.",
+					"How long captains get to decide on a balance suggestion before the displayed option is auto-accepted.",
 					"Default 3 minutes. Set 0s to disable auto-accept (menu waits until the match times out)."
 				])
 			),

@@ -15,11 +15,14 @@ touching the bot.
   ✅ accept (both captains), 🔄 next option, ✋ manual picks. Configurable auto-accept timeout,
   and `/rebalance` returns a drafting match to the menu. Any failure (unlinked player, API down,
   wrong queue size) falls back to the untouched vanilla draft.
-- **`/tier`** (also `=tier` / `=soracle`) — a player's Soracle profile: tier, role ratings, tooltip.
+- **`/tier`** (also `=tier`) — a player's site profile: tier, role ratings, tooltip.
 - **`/stats`** (also `=stats`) — month-to-date CTF stats from Soracle: matches, W/L, K/D, caps,
   returns, assists, base cleans, flag grabs, flag hold time. Vanilla's admin stats tools moved
   to `/stats_admin`.
 - **`/friend`** (also `=friend`) — the team-mate you've won the most games alongside this month.
+- **`/owneds`** (also `=owneds` / `=owned`) — two top-3 kill-matchup boards for the month: the
+  opponents you out-frag the most across shared stat-tracked games, and the ones out-fragging you
+  (total kill differential, min 2 shared games).
 - **`/lastgame`** (also `=lg`) — in-depth view of the last match recorded on Soracle (score,
   winner, per-player final scores). Vanilla's last-game view is preserved on `/lastgame_vanilla`
   (`=lgv`).

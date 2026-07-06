@@ -534,7 +534,7 @@ async def _report(
 ): await run_slash(bot.commands.report, interaction=interaction, result='loss')
 
 
-@soracle_slash(name='lastgame', description='Last match on Soracle, or a player\'s last game.', **guild_kwargs)
+@soracle_slash(name='lastgame', description='Last recorded match, or a player\'s last game.', **guild_kwargs)
 async def _last_game(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),
@@ -583,7 +583,7 @@ async def _pug_settings(
 ): await run_slash(bot.commands.pug_settings, interaction=interaction)
 
 
-@soracle_slash(name='rebalance', description='Return the match from manual picking to the Soracle balance suggestions.', **guild_kwargs)
+@soracle_slash(name='rebalance', description='Return the match from manual picking to the balance suggestions.', **guild_kwargs)
 async def _rebalance(
 		interaction: Interaction,
 ): await run_slash(bot.commands.rebalance, interaction=interaction)
@@ -596,11 +596,18 @@ async def _preview(
 ): await run_slash(bot.commands.balance_preview, interaction=interaction, option=option)
 
 
-@soracle_slash(name='stats', description='Month-to-date JK2 stats from Soracle (caps, returns, K/D and more).', **guild_kwargs)
+@soracle_slash(name='stats', description='Month-to-date JK2 stats (caps, returns, K/D and more).', **guild_kwargs)
 async def _monthly_stats(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),
 ): await run_slash(bot.commands.monthly_stats, interaction=interaction, player=player)
+
+
+@soracle_slash(name='owneds', description='Who you out-frag the most this month — and who owns you.', **guild_kwargs)
+async def _owneds(
+		interaction: Interaction,
+		player: Member = SlashOption(required=False, verify=False),
+): await run_slash(bot.commands.owneds, interaction=interaction, player=player)
 
 
 @soracle_slash(name='dbs', description='Top 5 DBS killers this month.', **guild_kwargs)
@@ -701,7 +708,7 @@ async def _friend(
 ): await run_slash(bot.commands.friend, interaction=interaction, player=player)
 
 
-@soracle_slash(name='options', description="Show Soracle's three balance suggestions for your match (read-only).", **guild_kwargs)
+@soracle_slash(name='options', description="Show the three balance suggestions for your match (read-only).", **guild_kwargs)
 async def _options(
 		interaction: Interaction,
 ): await run_slash(bot.commands.balance_options, interaction=interaction)
@@ -713,7 +720,7 @@ async def _wrapped(
 ): await run_slash(bot.commands.wrapped, interaction=interaction)
 
 
-@soracle_slash(name='tier', description='Show a player\'s Soracle profile (tier and roles).', **guild_kwargs)
+@soracle_slash(name='tier', description='Show a player\'s profile (tier and roles).', **guild_kwargs)
 async def _tier(
 		interaction: Interaction,
 		player: Member = SlashOption(required=False, verify=False),
