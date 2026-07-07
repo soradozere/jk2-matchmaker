@@ -124,16 +124,6 @@ async def fetch_friend(discord_id):
 	return data
 
 
-async def fetch_owneds(discord_id):
-	""" A player's monthly kill-matchup boards (owned / ownedBy), or None if unlinked. """
-	status, data = await _request('GET', f"/api/bot/owneds/by-discord/{discord_id}")
-	if status == 404:
-		return None
-	if status != 200 or data is None:
-		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
-	return data
-
-
 async def fetch_last_match(discord_id=None):
 	""" The most recent match recorded on Soracle (with scoreboard). With a discord_id,
 		returns that player's last match instead. None if there's no match (or, for a
