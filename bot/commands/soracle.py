@@ -3,7 +3,7 @@ __all__ = [
 	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
 	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'duos', 'wrapped', 'last_game_soracle',
-	'owneds', 'balance_options'
+	'balance_options'
 ]
 
 import re
@@ -596,48 +596,4 @@ async def monthly_stats(ctx, player: Member = None):
 	)
 	if target.display_avatar:
 		embed.set_thumbnail(url=target.display_avatar.url)
-	await ctx.reply(embed=embed)
-
-
-async def owneds(ctx, player: Member = None):
-	""" =owneds — two top-3 kill-matchup boards for a player this month: the
-		opponents they're out-fragging across shared stat-tracked games, and the
-		opponents out-fragging them. Ranked by total kill differential. """
-	target = ctx.author if not player else await ctx.get_member(player)
-	if not target:
-		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
-
-	try:
-		data = await soracle.fetch_owneds(target.id)
-	except bot.soracle.SoracleError as e:
-		raise bot.Exc.NotFoundError(str(e))
-	if data is None:
-		raise bot.Exc.NotFoundError(UNLINKED.format(name=get_nick(target), url=SITE_URL))
-
-	name = data.get('name') or get_nick(target)
-	embed = Embed(title=f"Owneds — {name} ({data.get('month', 'this month')})", colour=Colour(0x9b59b6), url=_profile_url(name))
-
-	def _lines(rows, sign):
-		return "\n".join(
-			"**{i}.** **{opp}** — {sign}{diff} kills (**{mine}–{theirs}** over {g} games)".format(
-				i=i + 1, opp=r['name'], sign=sign, diff=abs(r['diff']),
-				mine=r['myKills'], theirs=r['theirKills'], g=r['games']
-			) for i, r in enumerate(rows)
-		)
-
-	owned, owned_by = data.get('owned') or [], data.get('ownedBy') or []
-	if not owned and not owned_by:
-		embed.description = ctx.qc.gt("No kill matchups yet this month — play a few more stat-tracked games.")
-	else:
-		embed.add_field(
-			name="😈 Owning",
-			value=_lines(owned, "+") or ctx.qc.gt("No one yet — get fragging."),
-			inline=False
-		)
-		embed.add_field(
-			name="💀 Owned by",
-			value=_lines(owned_by, "−") or ctx.qc.gt("No one — untouchable."),
-			inline=False
-		)
-		embed.set_footer(text="Kill differential across this month's shared stat-tracked games (min 2 together).")
 	await ctx.reply(embed=embed)
