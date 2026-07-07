@@ -603,13 +603,6 @@ async def _monthly_stats(
 ): await run_slash(bot.commands.monthly_stats, interaction=interaction, player=player)
 
 
-@soracle_slash(name='owneds', description='Who you out-frag the most this month — and who owns you.', **guild_kwargs)
-async def _owneds(
-		interaction: Interaction,
-		player: Member = SlashOption(required=False, verify=False),
-): await run_slash(bot.commands.owneds, interaction=interaction, player=player)
-
-
 @soracle_slash(name='dbs', description='Top 5 DBS killers this month.', **guild_kwargs)
 async def _dbs(
 		interaction: Interaction,

@@ -339,16 +339,6 @@ async def _wrapped(ctx: MessageContext, args: str = None):
 	await bot.commands.wrapped(ctx)
 
 
-@soracle_command('owneds', 'owned')
-async def _owneds(ctx: MessageContext, args: str = None):
-	if not args:
-		await bot.commands.owneds(ctx, player=None)
-		return
-	if (member := await ctx.get_member(args)) is None:
-		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
-	await bot.commands.owneds(ctx, player=member)
-
-
 @soracle_command('tier')
 async def _soracle(ctx: MessageContext, args: str = None):
 	if not args:
