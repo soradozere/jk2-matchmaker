@@ -104,6 +104,16 @@ async def fetch_player_stats(discord_id):
 	return data
 
 
+async def fetch_achievements(discord_id):
+	""" A player's top earned achievements, or None if the discord id is unlinked. """
+	status, data = await _request('GET', f"/api/bot/achievements/by-discord/{discord_id}")
+	if status == 404:
+		return None
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
 async def fetch_nemesis(discord_id):
 	""" A player's worst head-to-head this month, or None if unlinked. """
 	status, data = await _request('GET', f"/api/bot/nemesis/by-discord/{discord_id}")
