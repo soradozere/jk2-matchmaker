@@ -3,7 +3,7 @@ __all__ = [
 	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
 	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'duos', 'wrapped', 'last_game_soracle',
-	'balance_options'
+	'balance_options', 'achievements'
 ]
 
 import re
@@ -596,4 +596,61 @@ async def monthly_stats(ctx, player: Member = None):
 	)
 	if target.display_avatar:
 		embed.set_thumbnail(url=target.display_avatar.url)
+	await ctx.reply(embed=embed)
+
+
+# Rarity → Discord dot emoji + embed accent colour (matches the site's crests).
+RARITY_DOT = {"common": "🟢", "rare": "🔵", "epic": "🟣", "legendary": "🟡"}
+RARITY_COLOUR = {"common": 0x3ddc84, "rare": 0x2f81f7, "epic": 0xa855f7, "legendary": 0xf5c542}
+
+
+async def achievements(ctx, player: Member = None):
+	""" A player's top unlocked achievements (=achievements). Leads with the rarest
+		earned crest as the thumbnail. """
+	target = ctx.author if not player else await ctx.get_member(player)
+	if not target:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+
+	try:
+		data = await soracle.fetch_achievements(target.id)
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	if data is None:
+		raise bot.Exc.NotFoundError(
+			UNLINKED.format(name=get_nick(target), url=SITE_URL)
+		)
+
+	name = data.get('name') or get_nick(target)
+	profile_url = data.get('profileUrl') or _profile_url(name)
+	top = data.get('top') or []
+
+	colour = Colour(RARITY_COLOUR.get(top[0]['rarity'], 0x50e3c2)) if top else Colour(0x50e3c2)
+	embed = Embed(title=f"__{name}__ — Achievements", colour=colour, url=profile_url)
+	embed.description = "**{e}** of **{t}** unlocked".format(
+		e=data.get('earnedCount', 0), t=data.get('total', 0)
+	)
+
+	if not top:
+		embed.add_field(
+			name="—",
+			value=ctx.qc.gt("No achievements unlocked yet — get grinding!"),
+			inline=False
+		)
+	else:
+		embed.add_field(
+			name=ctx.qc.gt("Top achievements"),
+			value="\n".join(
+				"{dot} **{n}** — {c}".format(dot=RARITY_DOT.get(a.get('rarity'), '⚪'), n=a['name'], c=a['condition'])
+				for a in top
+			),
+			inline=False
+		)
+		if img := top[0].get('image'):
+			embed.set_thumbnail(url=img)
+
+	embed.add_field(
+		name="—",
+		value=ctx.qc.gt("See your full profile at {url}").format(url=profile_url),
+		inline=False
+	)
 	await ctx.reply(embed=embed)

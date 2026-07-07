@@ -244,6 +244,16 @@ async def _monthly_stats(ctx: MessageContext, args: str = None):
 	await bot.commands.monthly_stats(ctx, player=member)
 
 
+@soracle_command('achievements', 'achs')
+async def _achievements(ctx: MessageContext, args: str = None):
+	if not args:
+		await bot.commands.achievements(ctx, player=None)
+		return
+	if (member := await ctx.get_member(args)) is None:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+	await bot.commands.achievements(ctx, player=member)
+
+
 @soracle_command('dbs')
 async def _dbs(ctx: MessageContext, args: str = None):
 	await bot.commands.dbs_leaderboard(ctx)
