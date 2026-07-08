@@ -321,7 +321,12 @@ async def _streak(ctx: MessageContext, args: str = None):
 
 @soracle_command('redblue')
 async def _redblue(ctx: MessageContext, args: str = None):
-	await bot.commands.redblue(ctx)
+	if not args:
+		await bot.commands.redblue(ctx, player=None)
+		return
+	if (member := await ctx.get_member(args)) is None:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+	await bot.commands.redblue(ctx, player=member)
 
 
 @soracle_command('nemesis')
@@ -342,6 +347,16 @@ async def _friend(ctx: MessageContext, args: str = None):
 	if (member := await ctx.get_member(args)) is None:
 		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
 	await bot.commands.friend(ctx, player=member)
+
+
+@soracle_command('curse')
+async def _curse(ctx: MessageContext, args: str = None):
+	if not args:
+		await bot.commands.curse(ctx, player=None)
+		return
+	if (member := await ctx.get_member(args)) is None:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+	await bot.commands.curse(ctx, player=member)
 
 
 @soracle_command('wrapped')

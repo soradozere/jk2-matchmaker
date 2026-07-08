@@ -134,6 +134,26 @@ async def fetch_friend(discord_id):
 	return data
 
 
+async def fetch_curse(discord_id):
+	""" A player's worst team-mate this month (most-lost-alongside), or None if unlinked. """
+	status, data = await _request('GET', f"/api/bot/curse/by-discord/{discord_id}")
+	if status == 404:
+		return None
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
+async def fetch_redblue(discord_id):
+	""" A player's all-time W/L on the Red base vs the Blue base, or None if unlinked. """
+	status, data = await _request('GET', f"/api/bot/redblue/by-discord/{discord_id}")
+	if status == 404:
+		return None
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
 async def fetch_last_match(discord_id=None):
 	""" The most recent match recorded on Soracle (with scoreboard). With a discord_id,
 		returns that player's last match instead. None if there's no match (or, for a
