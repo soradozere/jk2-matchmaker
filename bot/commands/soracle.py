@@ -2,7 +2,7 @@ __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
 	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
-	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'duos', 'wrapped', 'last_game_soracle',
+	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'curse', 'duos', 'wrapped', 'last_game_soracle',
 	'balance_options', 'achievements'
 ]
 
@@ -223,22 +223,38 @@ async def streaks_leaderboard(ctx):
 	await ctx.reply(embed=embed)
 
 
-async def redblue(ctx):
+async def redblue(ctx, player: Member = None):
+	target = ctx.author if not player else await ctx.get_member(player)
+	if not target:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+
 	try:
-		data = await soracle.fetch_monthly_report()
+		data = await soracle.fetch_redblue(target.id)
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
-	rb = data.get('redBlue') or {}
-	total = rb.get('total') or 0
-	embed = Embed(title=f"🔥 Red vs Blue 💧 — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
-	if not total:
-		embed.description = ctx.qc.gt("No matches recorded this month yet.")
-	else:
-		red, blue, draws = rb.get('redWins', 0), rb.get('blueWins', 0), rb.get('draws', 0)
-		embed.description = "🔥 Red: **{r}** ({rp}%)\n💧 Blue: **{b}** ({bp}%){d}\nover **{t}** matches".format(
-			r=red, rp=int(red * 100 / total), b=blue, bp=int(blue * 100 / total),
-			d=f"\n🤝 Draws: **{draws}**" if draws else "", t=total
+	if data is None:
+		raise bot.Exc.NotFoundError(
+			UNLINKED.format(name=get_nick(target), url=SITE_URL)
 		)
+
+	red, blue = data.get('red') or {}, data.get('blue') or {}
+	embed = Embed(title=f"🔥 Red vs Blue 💧 — {data.get('name') or get_nick(target)}", colour=Colour(0x50e3c2), url=SITE_URL)
+
+	def _side(emoji, label, s):
+		g = s.get('games') or 0
+		if not g:
+			return f"{emoji} {label} — no games yet"
+		w, l, d = s.get('wins', 0), s.get('losses', 0), s.get('draws', 0)
+		return "{e} {lab} — **{w}–{l}**{d} · **{p}%** over {g}".format(
+			e=emoji, lab=label, w=w, l=l,
+			d=f"–{d}D" if d else "", p=round(w * 100 / g), g=g
+		)
+
+	if not (red.get('games') or blue.get('games')):
+		embed.description = ctx.qc.gt("No recorded games yet.")
+	else:
+		embed.description = f"{_side('🔥', 'Red base', red)}\n{_side('💧', 'Blue base', blue)}"
+	embed.set_footer(text=f"All-time base record. For global stats, go to {SITE_URL}/stats")
 	await ctx.reply(embed=embed)
 
 
@@ -321,6 +337,47 @@ async def friend(ctx, player: Member = None):
 			for i, fr in enumerate(friends)
 		)
 		embed.set_footer(text="Your best team-mates this month — ranked by win rate on the same team.")
+	await ctx.reply(embed=embed)
+
+
+async def curse(ctx, player: Member = None):
+	target = ctx.author if not player else await ctx.get_member(player)
+	if not target:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
+
+	try:
+		data = await soracle.fetch_curse(target.id)
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	if data is None:
+		raise bot.Exc.NotFoundError(
+			UNLINKED.format(name=get_nick(target), url=SITE_URL)
+		)
+
+	curses = data.get('curses')
+	if curses is None:  # single-curse fallback, mirrors friend/nemesis
+		curses = [c] if (c := data.get('curse')) else []
+	title = "Curse" if len(curses) <= 1 else "Curses"
+	embed = Embed(title=f"{title} — {data.get('name') or get_nick(target)}", colour=Colour(0xc0392b), url=SITE_URL)
+
+	def _pct(cr):
+		return round(cr['losses'] * 100 / cr['games']) if cr['games'] else 0
+
+	if not curses:
+		embed.description = ctx.qc.gt("No curse yet this month — not enough games alongside any one player.")
+	elif len(curses) == 1:
+		cr = curses[0]
+		embed.description = "You **lose {pct}%** of games alongside **{name}** this month (**{l} of {g}**).".format(
+			name=cr['name'], pct=_pct(cr), l=cr['losses'], g=cr['games']
+		)
+	else:
+		embed.description = "\n".join(
+			"**{i}.** **{name}** — **{pct}%** losses together (**{l} of {g}**)".format(
+				i=i + 1, name=cr['name'], pct=_pct(cr), l=cr['losses'], g=cr['games']
+			)
+			for i, cr in enumerate(curses)
+		)
+		embed.set_footer(text="The team-mates you lose most alongside this month — ranked by loss rate on the same team.")
 	await ctx.reply(embed=embed)
 
 
