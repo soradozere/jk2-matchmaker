@@ -657,8 +657,24 @@ async def monthly_stats(ctx, player: Member = None):
 
 
 # Rarity → Discord dot emoji + embed accent colour (matches the site's crests).
-RARITY_DOT = {"common": "🟢", "rare": "🔵", "epic": "🟣", "legendary": "🟡"}
-RARITY_COLOUR = {"common": 0x3ddc84, "rare": 0x2f81f7, "epic": 0xa855f7, "legendary": 0xf5c542}
+RARITY_DOT = {"common": "🟢", "rare": "🔵", "epic": "🟣", "legendary": "🟡", "mythic": "⚪"}
+RARITY_COLOUR = {
+	"common": 0x3ddc84, "rare": 0x2f81f7, "epic": 0xa855f7,
+	"legendary": 0xf5c542, "mythic": 0xeaeeff,
+}
+
+
+def _achievement_line(a):
+	""" One "🟡 **Batcher III** — Base cleans in a single match (**100+**)" row.
+		`requirement` is the current rank's threshold, sent only for tiered crests
+		(untiered conditions already carry their number). Older Soracle deploys
+		omit the field, so it degrades to the plain condition. """
+	line = "{dot} **{n}** — {c}".format(
+		dot=RARITY_DOT.get(a.get('rarity'), '⚪'), n=a['name'], c=a['condition']
+	)
+	if req := a.get('requirement'):
+		line += f" (**{req}**)"
+	return line
 
 
 async def achievements(ctx, player: Member = None):
@@ -696,10 +712,7 @@ async def achievements(ctx, player: Member = None):
 	else:
 		embed.add_field(
 			name=ctx.qc.gt("Top achievements"),
-			value="\n".join(
-				"{dot} **{n}** — {c}".format(dot=RARITY_DOT.get(a.get('rarity'), '⚪'), n=a['name'], c=a['condition'])
-				for a in top
-			),
+			value="\n".join(_achievement_line(a) for a in top),
 			inline=False
 		)
 		if img := top[0].get('image'):
