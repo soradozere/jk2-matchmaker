@@ -50,23 +50,20 @@ async def soracle_info(ctx, player: Member = None):
 			UNLINKED.format(name=get_nick(target), url=SITE_URL)
 		)
 
-	# The equipped title (name + rarity + source) tints the embed and gets its
-	# own field, echoing the site's profile where the title sits under the tier.
+	# The equipped title tints the embed. It's shown as a rarity dot + name
+	# beneath the slogan — no source, matching the other title displays.
 	# Older Soracle deploys omit the field, so it degrades to no title.
 	title = data.get('title')
 	accent = RARITY_COLOUR.get(title.get('rarity'), 0x7289DA) if title else 0x7289DA
 	embed = Embed(title=f"__{data.get('name') or get_nick(target)}__", colour=Colour(accent))
+	desc_lines = []
 	if tooltip := data.get('tooltip'):
-		embed.description = f"*{tooltip}*"
-	embed.add_field(name="Tier", value=f"**{data.get('tier', '?')}**", inline=True)
+		desc_lines.append(f"*{tooltip}*")
 	if title:
-		embed.add_field(
-			name="Title",
-			value="{dot} **{t}**\n*{s}*".format(
-				dot=RARITY_DOT.get(title.get('rarity'), ''), t=title['title'], s=title.get('source', '')
-			),
-			inline=True
-		)
+		desc_lines.append("{dot} **{t}**".format(dot=RARITY_DOT.get(title.get('rarity'), ''), t=title['title']))
+	if desc_lines:
+		embed.description = "\n".join(desc_lines)
+	embed.add_field(name="Tier", value=f"**{data.get('tier', '?')}**", inline=True)
 	roles = data.get('roles') or {}
 	if isinstance(roles, dict):
 		roles_str = "\n".join(f"{ROLE_DISPLAY.get(name, name)}: **{score}**" for name, score in roles.items())
@@ -628,16 +625,14 @@ async def monthly_stats(ctx, player: Member = None):
 		colour=Colour(0x50e3c2),
 		url=profile_url
 	)
-	# Equipped title above the tooltip, mirroring the site's profile header. The
+	# Slogan, then the equipped title beneath it (rarity dot + name only). The
 	# stat fields already colour-code the embed, so the title just gets a line
 	# rather than tinting the whole thing.
 	header_lines = []
-	if title := data.get('title'):
-		header_lines.append("{dot} **{t}** · {s}".format(
-			dot=RARITY_DOT.get(title.get('rarity'), ''), t=title['title'], s=title.get('source', '')
-		))
 	if tooltip := data.get('tooltip'):
 		header_lines.append(f"*{tooltip}*")
+	if title := data.get('title'):
+		header_lines.append("{dot} **{t}**".format(dot=RARITY_DOT.get(title.get('rarity'), ''), t=title['title']))
 	if header_lines:
 		embed.description = "\n".join(header_lines)
 
@@ -722,14 +717,13 @@ async def achievements(ctx, player: Member = None):
 
 	colour = Colour(RARITY_COLOUR.get(top[0]['rarity'], 0x50e3c2)) if top else Colour(0x50e3c2)
 	embed = Embed(title=f"__{name}__ — Achievements", colour=colour, url=profile_url)
-	desc_lines = []
-	if title := data.get('title'):
-		desc_lines.append("{dot} **{t}** · {s}".format(
-			dot=RARITY_DOT.get(title.get('rarity'), ''), t=title['title'], s=title.get('source', '')
-		))
-	desc_lines.append("**{e}** of **{t}** unlocked".format(
+	desc_lines = ["**{e}** of **{t}** unlocked".format(
 		e=data.get('earnedCount', 0), t=data.get('total', 0)
-	))
+	)]
+	# Equipped title beneath the count (rarity dot + name only), consistent with
+	# the other title displays.
+	if title := data.get('title'):
+		desc_lines.append("{dot} **{t}**".format(dot=RARITY_DOT.get(title.get('rarity'), ''), t=title['title']))
 	embed.description = "\n".join(desc_lines)
 
 	if not top:
