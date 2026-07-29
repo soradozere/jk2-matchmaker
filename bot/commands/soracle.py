@@ -675,10 +675,13 @@ async def monthly_stats(ctx, player: Member = None):
 
 
 # Rarity → Discord dot emoji + embed accent colour (matches the site's crests).
-RARITY_DOT = {"common": "🟢", "rare": "🔵", "epic": "🟣", "legendary": "🟡", "mythic": "⚪"}
+# oneofone has no true-pink circle emoji in Discord's set, so it gets a star
+# instead — fitting, since a one-of-one is the site's own odd one out (octagon,
+# not hexagon).
+RARITY_DOT = {"common": "🟢", "rare": "🔵", "epic": "🟣", "legendary": "🟡", "mythic": "⚪", "oneofone": "⭐"}
 RARITY_COLOUR = {
 	"common": 0x3ddc84, "rare": 0x2f81f7, "epic": 0xa855f7,
-	"legendary": 0xf5c542, "mythic": 0xeaeeff,
+	"legendary": 0xf5c542, "mythic": 0xeaeeff, "oneofone": 0xff2fb9,
 }
 
 
