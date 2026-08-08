@@ -13,7 +13,6 @@ from urllib.parse import quote
 
 from nextcord import Member, Embed, Colour
 
-from core.config import cfg
 from core.utils import find, get_nick
 
 import bot
@@ -22,9 +21,9 @@ from bot import soracle
 # Site role names -> community names
 ROLE_DISPLAY = {"Cleaner": "BC"}
 
-# Public site for player-facing links (embed titles, profile links). Kept
-# separate from SORACLE_API_URL, which stays the API base the bot talks to.
-SITE_URL = getattr(cfg, 'PUBLIC_SITE_URL', 'https://jk2ctf.vercel.app')
+# Public site for player-facing links (embed titles, profile links). See
+# soracle.site_url() for why this is not SORACLE_API_URL.
+SITE_URL = soracle.site_url()
 
 UNLINKED = "**{name}** isn't linked to a site profile yet — an admin can link them at {url}"
 

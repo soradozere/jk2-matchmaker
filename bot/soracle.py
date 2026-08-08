@@ -15,6 +15,18 @@ def enabled():
 	return getattr(cfg, 'SORACLE_ENABLED', True)
 
 
+def site_url():
+	""" The public site, for anything a player will read or click: profile links,
+		embed titles, "log this game" nudges.
+
+		Deliberately not SORACLE_API_URL. That stays pinned to the Vercel host the
+		bot talks to over HTTP — nobody ever sees it, and it cannot lapse. This is
+		the community domain, and it is the only one that belongs in Discord. The
+		two used to be the same site, so reaching for whichever was already in
+		scope looked harmless; it isn't any more. """
+	return getattr(cfg, 'PUBLIC_SITE_URL', 'https://jk2ctf.com').rstrip('/')
+
+
 TIMEOUT = aiohttp.ClientTimeout(total=5)
 # Scoreboard uploads do more work server-side (parse, resolve names, store CSV),
 # so they get a longer budget than the read-only calls.
