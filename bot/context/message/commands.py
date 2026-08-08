@@ -304,6 +304,11 @@ async def _bc(ctx: MessageContext, args: str = None):
 	await bot.commands.bc_leaderboard(ctx)
 
 
+@soracle_command('doom')
+async def _doom(ctx: MessageContext, args: str = None):
+	await bot.commands.doom_leaderboard(ctx)
+
+
 @soracle_command('flaghold')
 async def _flaghold(ctx: MessageContext, args: str = None):
 	await bot.commands.flaghold_leaderboard(ctx)
