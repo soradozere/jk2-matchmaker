@@ -39,7 +39,7 @@ def build_embed(report, agg):
 		return None
 
 	month = report.get('month', 'last month')
-	embed = Embed(title=f"🏆 JK2 — {month} Wrapped", colour=Colour(0xf1c40f), url=soracle.cfg.SORACLE_API_URL)
+	embed = Embed(title=f"🏆 JK2 — {month} Wrapped", colour=Colour(0xf1c40f), url=soracle.site_url())
 	lines = [f"*That's a wrap on {month} — **{total_matches}** matches played!*\n"]
 
 	if star := report.get('starPlayer'):
@@ -77,7 +77,7 @@ def build_embed(report, agg):
 		if total:
 			lines.append("🔥 **Red vs Blue** 💧 — Red {r} / Blue {b}".format(r=rb.get('redWins', 0), b=rb.get('blueWins', 0)))
 
-	lines.append(f"\n*See the full breakdown at {soracle.cfg.SORACLE_API_URL} · type `=wrapped` to see this again.*")
+	lines.append(f"\n*See the full breakdown at {soracle.site_url()} · type `=wrapped` to see this again.*")
 	embed.description = "\n".join(lines)
 	return embed
 

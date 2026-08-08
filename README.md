@@ -2,7 +2,7 @@
 
 A Discord matchmaking bot for the **Jedi Knight II: Jedi Outcast** CTF community — a fork of
 [Leshaka/PUBobot2](https://github.com/Leshaka/PUBobot2) that adds deep integration with
-[Soracle](https://soracle.vercel.app), the community's player database and team-balancing brain.
+[Soracle](https://jk2ctf.com), the community's player database and team-balancing brain.
 
 The bot deliberately contains **no balancing logic of its own**: team suggestions, player tiers,
 role ratings and monthly stats all come from Soracle's API, so balance logic can evolve without

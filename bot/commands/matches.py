@@ -8,10 +8,10 @@ from nextcord import Member
 from typing import List
 from functools import wraps
 
-from core.config import cfg
 from core.utils import get, find
 
 import bot
+from bot import soracle
 
 
 def author_match(coro):
@@ -156,7 +156,7 @@ async def report(ctx, match: bot.Match, result):
 	try:
 		await ctx.notice(ctx.qc.gt(
 			"📊 Captains: log this game → {url}"
-		).format(url=getattr(cfg, 'PUBLIC_SITE_URL', 'https://jk2ctf.vercel.app')))
+		).format(url=soracle.site_url()))
 	except Exception:
 		pass
 
