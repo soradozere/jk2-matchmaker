@@ -4,7 +4,6 @@ from nextcord import DiscordException
 
 import bot
 from bot import soracle
-from core.config import cfg
 from core.utils import join_and, get_nick
 from core.console import log
 
@@ -51,7 +50,7 @@ class BalanceMenu:
 			await ctx.notice("\n".join((
 				self.m.gt("Auto-balancing supports 12 players — proceeding to manual picks."),
 				self.m.gt("Go to {url} to create a balance based on your own selection of 12 players.").format(
-					url=cfg.SORACLE_API_URL
+					url=soracle.site_url()
 				)
 			)))
 			await self.m.next_state(ctx)
