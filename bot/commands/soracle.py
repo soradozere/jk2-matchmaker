@@ -2,7 +2,7 @@ __all__ = [
 	'soracle_info', 'monthly_stats', 'dbs_leaderboard', 'dfa_leaderboard',
 	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
-	'streaks_leaderboard', 'redblue', 'nemesis', 'friend', 'curse', 'duos', 'wrapped', 'last_game_soracle',
+	'streaks_leaderboard', 'doom_leaderboard', 'redblue', 'nemesis', 'friend', 'curse', 'duos', 'wrapped', 'last_game_soracle',
 	'balance_options', 'achievements'
 ]
 
@@ -83,10 +83,10 @@ def _board_lines(ctx, top, unit=""):
 	)
 
 
-async def _stat_leaderboard(ctx, stat, title, unit=""):
+async def _stat_leaderboard(ctx, stat, title, unit="", all_time=False):
 	""" Simple top-5-by-summed-stat board (=dfa, =grabs, ...). """
 	try:
-		data = await soracle.fetch_stat_leaderboard(stat)
+		data = await soracle.fetch_stat_leaderboard(stat, all_time=all_time)
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 
@@ -116,6 +116,13 @@ async def dfa_leaderboard(ctx):
 
 async def grabs_leaderboard(ctx):
 	await _stat_leaderboard(ctx, 'flag_grabs', "Top flag grabbers")
+
+
+async def doom_leaderboard(ctx):
+	# ALL-TIME, unlike every other board here. Doom kills run about one a week
+	# across the whole community, so a monthly board would usually be empty or a
+	# single player on 1.
+	await _stat_leaderboard(ctx, 'doom_kills', "Top doom throwers", all_time=True)
 
 
 async def bc_leaderboard(ctx):
