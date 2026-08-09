@@ -70,13 +70,20 @@ async def handle_scoreboard_attachments(message):
 	if message.guild:
 		where = f"{message.guild.name} > {where}"
 
-	for attachment in message.attachments:
-		if not attachment.filename.lower().endswith('.csv'):
-			continue
+	# Tom's scoreboard bot posts the SAME match as both .json and .csv. Prefer the
+	# JSON: it carries everything the CSV does plus match duration, per-opponent
+	# kill/return matrix and TELE kills. Uploading both would be worse than
+	# arbitrary — they share a Discord message id, so Soracle's idempotency check
+	# rejects whichever lands second, making the winner a race.
+	scoreboards = [a for a in message.attachments if a.filename.lower().endswith('.json')]
+	if not scoreboards:
+		scoreboards = [a for a in message.attachments if a.filename.lower().endswith('.csv')]
+
+	for attachment in scoreboards:
 		try:
-			csv_bytes = await attachment.read()
+			payload_bytes = await attachment.read()
 			status, data = await soracle.upload_scoreboard(
-				csv_bytes, attachment.filename,
+				payload_bytes, attachment.filename,
 				guild_id=message.guild.id if message.guild else None,
 				channel_id=message.channel.id,
 				message_id=message.id,
@@ -87,7 +94,7 @@ async def handle_scoreboard_attachments(message):
 			log.error(f"Failed to upload scoreboard '{attachment.filename}' to Soracle: {e}")
 			await _dm_owner(
 				f"⚠️ Couldn't reach the stats site to upload scoreboard `{attachment.filename}` "
-				f"({where}). The CSV is still in the channel — re-post it once the site is back."
+				f"({where}). The file is still in the channel — re-post it once the site is back."
 			)
 			continue
 		except Exception as e:
@@ -97,11 +104,11 @@ async def handle_scoreboard_attachments(message):
 
 		log.info(f"Scoreboard '{attachment.filename}' -> Soracle: HTTP {status} {data}")
 		# 200 = queued / skipped (<12) / duplicate — all fine. >=400 means Soracle
-		# rejected it (bad CSV, auth, server error), which warrants a heads-up.
+		# rejected it (unparseable, auth, server error), which warrants a heads-up.
 		if status >= 400:
 			await _dm_owner(
 				f"⚠️ The stats site rejected scoreboard `{attachment.filename}` ({where}) — "
-				f"HTTP {status}: {data}. The CSV is still in the channel."
+				f"HTTP {status}: {data}. The file is still in the channel."
 			)
 
 
