@@ -1,3 +1,4 @@
+import asyncio
 import traceback
 from nextcord import ChannelType, Activity, ActivityType
 
@@ -62,6 +63,66 @@ async def _dm_owner(text):
 		log.error(f"Could not DM owner: {e}")
 
 
+# How long a CSV-only message waits for a same-channel JSON before uploading
+# anyway — see the note in handle_scoreboard_attachments. Every real pair
+# observed on Soracle landed ~6s apart, so this leaves generous margin without
+# meaningfully delaying a match on the (currently unseen) night Tom's bot only
+# manages the CSV.
+CSV_HOLD_SECONDS = 20
+
+# channel_id -> the asyncio.Task currently holding a CSV upload back in case a
+# JSON for the same match is still in flight. Only the most recently held CSV
+# per channel is tracked — if a second un-JSON'd CSV lands in the same channel
+# before the first one's hold expires, a JSON arriving after that would cancel
+# the wrong one. Not worth guarding against: matches in one channel are spaced
+# by minutes to hours in practice, never seconds.
+_pending_csv_uploads = {}
+
+
+async def _upload_scoreboard(attachment, message, where):
+	""" Read one attachment and forward it to Soracle, DMing the owner on any
+		failure so a match can't silently vanish. """
+	try:
+		payload_bytes = await attachment.read()
+		status, data = await soracle.upload_scoreboard(
+			payload_bytes, attachment.filename,
+			guild_id=message.guild.id if message.guild else None,
+			channel_id=message.channel.id,
+			message_id=message.id,
+			user_id=message.author.id,
+			username=str(message.author),
+		)
+	except soracle.SoracleError as e:
+		log.error(f"Failed to upload scoreboard '{attachment.filename}' to Soracle: {e}")
+		await _dm_owner(
+			f"⚠️ Couldn't reach the stats site to upload scoreboard `{attachment.filename}` "
+			f"({where}). The file is still in the channel — re-post it once the site is back."
+		)
+		return
+	except Exception as e:
+		log.error(f"Unexpected error uploading scoreboard '{attachment.filename}': {e}")
+		await _dm_owner(f"⚠️ Error uploading scoreboard `{attachment.filename}` ({where}): {e}")
+		return
+
+	log.info(f"Scoreboard '{attachment.filename}' -> Soracle: HTTP {status} {data}")
+	# 200 = queued / skipped (<12) / duplicate — all fine. >=400 means Soracle
+	# rejected it (unparseable, auth, server error), which warrants a heads-up.
+	if status >= 400:
+		await _dm_owner(
+			f"⚠️ The stats site rejected scoreboard `{attachment.filename}` ({where}) — "
+			f"HTTP {status}: {data}. The file is still in the channel."
+		)
+
+
+async def _upload_csv_after_delay(channel_id, attachment, message, where):
+	try:
+		await asyncio.sleep(CSV_HOLD_SECONDS)
+	except asyncio.CancelledError:
+		return  # a JSON for this channel showed up and won instead
+	_pending_csv_uploads.pop(channel_id, None)
+	await _upload_scoreboard(attachment, message, where)
+
+
 async def handle_scoreboard_attachments(message):
 	if not _is_scoreboard_channel(message):
 		return
@@ -70,46 +131,37 @@ async def handle_scoreboard_attachments(message):
 	if message.guild:
 		where = f"{message.guild.name} > {where}"
 
-	# Tom's scoreboard bot posts the SAME match as both .json and .csv. Prefer the
-	# JSON: it carries everything the CSV does plus match duration, per-opponent
-	# kill/return matrix and TELE kills. Uploading both would be worse than
-	# arbitrary — they share a Discord message id, so Soracle's idempotency check
-	# rejects whichever lands second, making the winner a race.
-	scoreboards = [a for a in message.attachments if a.filename.lower().endswith('.json')]
-	if not scoreboards:
-		scoreboards = [a for a in message.attachments if a.filename.lower().endswith('.csv')]
+	json_atts = [a for a in message.attachments if a.filename.lower().endswith('.json')]
+	csv_atts = [a for a in message.attachments if a.filename.lower().endswith('.csv')]
+	if not json_atts and not csv_atts:
+		return
 
-	for attachment in scoreboards:
-		try:
-			payload_bytes = await attachment.read()
-			status, data = await soracle.upload_scoreboard(
-				payload_bytes, attachment.filename,
-				guild_id=message.guild.id if message.guild else None,
-				channel_id=message.channel.id,
-				message_id=message.id,
-				user_id=message.author.id,
-				username=str(message.author),
-			)
-		except soracle.SoracleError as e:
-			log.error(f"Failed to upload scoreboard '{attachment.filename}' to Soracle: {e}")
-			await _dm_owner(
-				f"⚠️ Couldn't reach the stats site to upload scoreboard `{attachment.filename}` "
-				f"({where}). The file is still in the channel — re-post it once the site is back."
-			)
-			continue
-		except Exception as e:
-			log.error(f"Unexpected error uploading scoreboard '{attachment.filename}': {e}")
-			await _dm_owner(f"⚠️ Error uploading scoreboard `{attachment.filename}` ({where}): {e}")
-			continue
+	channel_id = message.channel.id
 
-		log.info(f"Scoreboard '{attachment.filename}' -> Soracle: HTTP {status} {data}")
-		# 200 = queued / skipped (<12) / duplicate — all fine. >=400 means Soracle
-		# rejected it (unparseable, auth, server error), which warrants a heads-up.
-		if status >= 400:
-			await _dm_owner(
-				f"⚠️ The stats site rejected scoreboard `{attachment.filename}` ({where}) — "
-				f"HTTP {status}: {data}. The file is still in the channel."
-			)
+	if json_atts:
+		# JSON wins outright — whether it arrived on THIS message alongside a CSV
+		# (already handled: only json_atts gets uploaded below), or as its own
+		# separate message a few seconds after a CSV-only one already started its
+		# hold in this channel (cancel that hold so the CSV never uploads).
+		held = _pending_csv_uploads.pop(channel_id, None)
+		if held:
+			held.cancel()
+		for attachment in json_atts:
+			await _upload_scoreboard(attachment, message, where)
+		return
+
+	# CSV only, no JSON on this message. Tom's bot posts the JSON as a SEPARATE
+	# Discord message a few seconds later (confirmed from Soracle's pending-match
+	# timestamps — they carry different message ids, not one message with two
+	# attachments), so uploading immediately would race it: Soracle's dedup keys
+	# on Discord message id, which differs between the two messages, so both
+	# would land as separate pending matches instead of the second being caught
+	# as a duplicate. Hold briefly so the JSON — better data: true duration, the
+	# per-opponent kill/return matrix, TELE kills — can pre-empt it if it's on
+	# its way.
+	for attachment in csv_atts:
+		task = asyncio.create_task(_upload_csv_after_delay(channel_id, attachment, message, where))
+		_pending_csv_uploads[channel_id] = task
 
 
 @dc.event
