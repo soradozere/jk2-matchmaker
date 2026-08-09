@@ -60,9 +60,10 @@ async def _request(method, path, json_body=None):
 		raise SoracleError("Could not reach the stats site.")
 
 
-async def upload_scoreboard(csv_bytes, filename, *, guild_id=None, channel_id=None,
+async def upload_scoreboard(payload_bytes, filename, *, guild_id=None, channel_id=None,
                             message_id=None, user_id=None, username=None):
-	""" Upload an end-of-match scoreboard CSV to Soracle's approval queue.
+	""" Upload an end-of-match scoreboard to Soracle's approval queue. Accepts
+		either format — Soracle picks the parser off the filename extension.
 
 		Returns (status, data): on success status 200 with data like
 		{pending_id, distinct, matched, unmatched}, or {skipped: True, reason}
@@ -72,7 +73,8 @@ async def upload_scoreboard(csv_bytes, filename, *, guild_id=None, channel_id=No
 	headers = {'Authorization': f"Bearer {cfg.SORACLE_API_SECRET}"}
 
 	form = aiohttp.FormData()
-	form.add_field('file', csv_bytes, filename=filename, content_type='text/csv')
+	content_type = 'application/json' if filename.lower().endswith('.json') else 'text/csv'
+	form.add_field('file', payload_bytes, filename=filename, content_type=content_type)
 	for key, value in (
 		('filename', filename),
 		('guild_id', guild_id),
