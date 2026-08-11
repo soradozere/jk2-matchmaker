@@ -213,6 +213,19 @@ async def fetch_stat_leaderboard(stat, all_time=False):
 	return data
 
 
+async def fetch_cap_conversion():
+	""" Cap conversion board: dict(window, matchCount, carryFloor, top=[...]).
+
+		Not a monthly board. It reads the per-opponent kill matrix, which only
+		exists from 9 Aug 2026 and can't be backfilled, so the window is "since
+		tracking began" and `matchCount` says how many games back it. Anything
+		presenting this to players must not imply a longer history. """
+	status, data = await _request('GET', "/api/bot/cap-conversion")
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
 async def fetch_balance(discord_ids):
 	""" Returns the list of balance options for exactly 12 discord ids.
 		Each option carries result.teamRed/teamBlue (names), tier totals, mic counts
