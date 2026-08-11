@@ -669,7 +669,7 @@ async def _flaghold(
 ): await run_slash(bot.commands.flaghold_leaderboard, interaction=interaction)
 
 
-@soracle_slash(name='returns', description='Top 5 returners (per minute) this month.', **guild_kwargs)
+@soracle_slash(name='returns', description='Top 5 returners (per minute, returner games only) this month.', **guild_kwargs)
 async def _returns(
 		interaction: Interaction,
 ): await run_slash(bot.commands.returns_leaderboard, interaction=interaction)

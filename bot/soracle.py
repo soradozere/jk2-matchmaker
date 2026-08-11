@@ -226,6 +226,19 @@ async def fetch_cap_conversion():
 	return data
 
 
+async def fetch_returner_rate():
+	""" Top returners: dict(month, gameFloor, top=[...]).
+
+		Rate is measured over each player's returner games only — Soracle works out
+		who played returner in each match from flag hold and mine grabs, because
+		counting cap and mine-clearing games ranked players by the role they were
+		given rather than how well they returned. """
+	status, data = await _request('GET', "/api/bot/returner-rate")
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
 async def fetch_balance(discord_ids):
 	""" Returns the list of balance options for exactly 12 discord ids.
 		Each option carries result.teamRed/teamBlue (names), tier totals, mic counts
