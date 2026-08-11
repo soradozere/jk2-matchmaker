@@ -568,44 +568,70 @@ async def flaghold_leaderboard(ctx):
 
 
 async def returns_leaderboard(ctx):
-	# Returns per minute played (time_played is in minutes). 30%-of-matches qualifier
-	# so a one-game fluke can't top it.
-	data, players, min_matches = await _monthly_players(ctx)
-	eligible = [
-		p for p in players
-		if p.get('matches', 0) >= min_matches and p.get('returns') and p.get('timePlayed')
-	]
-	top = sorted(eligible, key=lambda p: p['returns'] / p['timePlayed'], reverse=True)[:5]
+	# Returns per minute, over returner games only.
+	#
+	# Dividing returns by every minute played measured which role you were given,
+	# not how well you played it: a 6v6 side fields two cappers, a base cleaner, a
+	# support and two returners, and the first four aren't trying to return. One
+	# player's rate swung 0.09 -> 0.47 per minute between their cap games and the
+	# rest. Soracle picks each side's two returners per match off the scoreboard
+	# (flag hold, mine grabs) and only those games count.
+	try:
+		data = await soracle.fetch_returner_rate()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	top = (data.get('top') or [])[:5]
 	embed = Embed(title=f"Top returners — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("Not enough returns data this month yet.")
 	else:
 		embed.description = "\n".join(
-			"**{n}.** {name} — **{r:.2f}**/min ({tot} returns)".format(
-				n=i + 1, name=p['name'], r=p['returns'] / p['timePlayed'], tot=p['returns']
+			"**{n}.** {name} — **{r:.2f}**/min ({tot} returns in {g} games)".format(
+				n=i + 1, name=p['name'], r=p.get('perMinute', 0),
+				tot=p.get('returns', 0), g=p.get('games', 0)
 			) for i, p in enumerate(top)
 		)
+		embed.set_footer(text="Counts only games you played as one of your team's two returners. Min {f} such games.".format(
+			f=data.get('gameFloor', 0)
+		))
 	await ctx.reply(embed=embed)
 
 
 async def caps_leaderboard(ctx):
-	# Caps efficiency: minutes of flag hold per cap (lower = better). "Most caps per run":
-	# regular cappers only (caps >= 30% of the month's max) plus the 30%-of-matches qualifier.
-	data, players, min_matches = await _monthly_players(ctx)
-	qualified = [p for p in players if p.get('matches', 0) >= min_matches]
-	max_caps = max((p.get('captures', 0) for p in qualified), default=0)
-	floor = max_caps * 0.3
-	eligible = [p for p in qualified if p.get('captures', 0) >= floor and p.get('captures') and p.get('flagHoldMs')]
-	top = sorted(eligible, key=lambda p: p['flagHoldMs'] / p['captures'])[:5]
-	embed = Embed(title=f"Most caps per run — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
+	# Cap conversion: what share of a player's flag runs ended in a capture.
+	#
+	# Replaces minutes-of-flag-hold per cap, which players objected to with good
+	# reason — it only made sense for capper mains, and it read a long carry as
+	# inefficiency whether it ended in a score or a death. A run counts here only
+	# once it RESOLVES: you capped, or an enemy returned it off you. Grab-and-
+	# /kill resets (how support hands the flag to a runner) resolve neither way
+	# and are ignored, instead of counting against you as they did under grabs.
+	#
+	# Ordering and the qualifying floor are the site's, computed once in
+	# lib/cap-conversion.ts so Discord and the web page can't disagree.
+	try:
+		data = await soracle.fetch_cap_conversion()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	top = (data.get('top') or [])[:5]
+	window = data.get('window') or "since tracking began"
+	embed = Embed(title=f"Best cap conversions — {window}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
-		embed.description = ctx.qc.gt("Not enough capping data this month yet.")
+		embed.description = ctx.qc.gt("Not enough capping data yet.")
 	else:
 		embed.description = "\n".join(
-			"**{n}.** {name} — 1 cap / **{m:.1f} min** ({c} caps)".format(
-				n=i + 1, name=p['name'], m=p['flagHoldMs'] / 60000 / p['captures'], c=p['captures']
+			"**{n}.** {name} — **{pct:.1f}%** ({c} caps / {r} runs)".format(
+				n=i + 1, name=p['name'], pct=p.get('conversion', 0),
+				c=p.get('captures', 0), r=p.get('carries', 0)
 			) for i, p in enumerate(top)
 		)
+		# The footer is load-bearing: without it the percentage looks like it
+		# covers every game ever played, and it covers a handful.
+		embed.set_footer(text="A run counts once it ends in a cap or a return. Since 9 Aug · {m} matches tracked · min {f} runs".format(
+			m=data.get('matchCount', 0), f=data.get('carryFloor', 0)
+		))
 	await ctx.reply(embed=embed)
 
 
