@@ -568,23 +568,33 @@ async def flaghold_leaderboard(ctx):
 
 
 async def returns_leaderboard(ctx):
-	# Returns per minute played (time_played is in minutes). 30%-of-matches qualifier
-	# so a one-game fluke can't top it.
-	data, players, min_matches = await _monthly_players(ctx)
-	eligible = [
-		p for p in players
-		if p.get('matches', 0) >= min_matches and p.get('returns') and p.get('timePlayed')
-	]
-	top = sorted(eligible, key=lambda p: p['returns'] / p['timePlayed'], reverse=True)[:5]
+	# Returns per minute, over returner games only.
+	#
+	# Dividing returns by every minute played measured which role you were given,
+	# not how well you played it: a 6v6 side fields two cappers, a base cleaner, a
+	# support and two returners, and the first four aren't trying to return. One
+	# player's rate swung 0.09 -> 0.47 per minute between their cap games and the
+	# rest. Soracle picks each side's two returners per match off the scoreboard
+	# (flag hold, mine grabs) and only those games count.
+	try:
+		data = await soracle.fetch_returner_rate()
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	top = (data.get('top') or [])[:5]
 	embed = Embed(title=f"Top returners — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("Not enough returns data this month yet.")
 	else:
 		embed.description = "\n".join(
-			"**{n}.** {name} — **{r:.2f}**/min ({tot} returns)".format(
-				n=i + 1, name=p['name'], r=p['returns'] / p['timePlayed'], tot=p['returns']
+			"**{n}.** {name} — **{r:.2f}**/min ({tot} returns in {g} games)".format(
+				n=i + 1, name=p['name'], r=p.get('perMinute', 0),
+				tot=p.get('returns', 0), g=p.get('games', 0)
 			) for i, p in enumerate(top)
 		)
+		embed.set_footer(text="Counts only games you played as one of your team's two returners. Min {f} such games.".format(
+			f=data.get('gameFloor', 0)
+		))
 	await ctx.reply(embed=embed)
 
 
@@ -607,7 +617,7 @@ async def caps_leaderboard(ctx):
 
 	top = (data.get('top') or [])[:5]
 	window = data.get('window') or "since tracking began"
-	embed = Embed(title=f"Best cap conversion — {window}", colour=Colour(0x50e3c2), url=SITE_URL)
+	embed = Embed(title=f"Best cap conversions — {window}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("Not enough capping data yet.")
 	else:
@@ -619,7 +629,7 @@ async def caps_leaderboard(ctx):
 		)
 		# The footer is load-bearing: without it the percentage looks like it
 		# covers every game ever played, and it covers a handful.
-		embed.set_footer(text="A run counts once it ends in a cap or a return. {m} matches tracked · min {f} runs".format(
+		embed.set_footer(text="A run counts once it ends in a cap or a return. Since 9 Aug · {m} matches tracked · min {f} runs".format(
 			m=data.get('matchCount', 0), f=data.get('carryFloor', 0)
 		))
 	await ctx.reply(embed=embed)
