@@ -10,7 +10,7 @@ from core.console import log
 from core.client import dc
 
 from .check_in import CheckIn
-from .balance_menu import BalanceMenu
+from .auto_balance import AutoBalance
 from .draft import Draft
 from .embeds import Embeds
 
@@ -33,7 +33,7 @@ class Match:
 		team_size=1, pick_captains="no captains", captains_role_id=None, no_captain_role_id=None, pick_teams="draft",
 		pick_order=None, maps=[], vote_maps=0, map_count=0, check_in_timeout=0,
 		check_in_discard=True, check_in_discard_immediately=True, match_lifetime=3*60*60, start_msg=None, server=None,
-		show_streamers=True, soracle_balance=False, soracle_balance_timeout=3*60
+		show_streamers=True, soracle_balance=False
 	)
 
 	class Team(list):
@@ -138,7 +138,7 @@ class Match:
 			await match.check_in.start(ctx)  # Spawn a new check_in message
 		elif match.state == match.BALANCE:
 			ctx = bot.SystemContext(qc)
-			await match.balance_menu.start(ctx)  # Re-fetch suggestions and spawn a new menu
+			await match.auto_balance.start(ctx)  # Re-fetch and re-apply the balance
 
 		bot.active_matches.append(match)
 
@@ -179,7 +179,7 @@ class Match:
 
 		# Init self sections
 		self.check_in = CheckIn(self, self.cfg['check_in_timeout'])
-		self.balance_menu = BalanceMenu(self)
+		self.auto_balance = AutoBalance(self)
 		self.draft = Draft(self, self.cfg['pick_order'], self.cfg['captains_role_id'])
 		self.embeds = Embeds(self)
 
@@ -256,9 +256,6 @@ class Match:
 		elif self.state == self.CHECK_IN:
 			await self.check_in.think(frame_time)
 
-		elif self.state == self.BALANCE:
-			await self.balance_menu.think(frame_time)
-
 		elif frame_time > self.lifetime + self.start_time:
 			ctx = bot.SystemContext(self.qc)
 			try:
@@ -276,7 +273,7 @@ class Match:
 			if self.state == self.CHECK_IN:
 				await self.check_in.start(ctx)
 			elif self.state == self.BALANCE:
-				await self.balance_menu.start(ctx)
+				await self.auto_balance.start(ctx)
 			elif self.state == self.DRAFT:
 				await self.draft.start(ctx)
 				# With the interactive menu off, auto-post Soracle's suggestions for a
@@ -346,7 +343,7 @@ class Match:
 			player=member.mention, left=len(self.players)
 		)
 		if len(self.players) == 12 and self.cfg['soracle_balance']:
-			message += "\n" + self.gt("A captain can type {cmd} for fresh balance suggestions.").format(
+			message += "\n" + self.gt("A captain can type {cmd} to auto-balance the teams.").format(
 				cmd=f"`{self.qc.cfg.prefix}rebalance`"
 			)
 		await ctx.notice(message)
@@ -464,8 +461,6 @@ class Match:
 	async def cancel(self, ctx):
 		if self.check_in.message and self.check_in.message.id in bot.waiting_reactions.keys():
 			bot.waiting_reactions.pop(self.check_in.message.id)
-		if self.balance_menu.message and self.balance_menu.message.id in bot.waiting_reactions.keys():
-			bot.waiting_reactions.pop(self.balance_menu.message.id)
 		try:
 			await ctx.notice(
 				self.gt("{players} your match has been canceled.").format(players=join_and([p.mention for p in self.players]))

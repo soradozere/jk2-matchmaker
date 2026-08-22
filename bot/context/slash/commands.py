@@ -583,17 +583,16 @@ async def _pug_settings(
 ): await run_slash(bot.commands.pug_settings, interaction=interaction)
 
 
-@soracle_slash(name='rebalance', description='Return the match from manual picking to the balance suggestions.', **guild_kwargs)
+@soracle_slash(name='rebalance', description='Re-apply Soracle\'s Perfect Balance to a drafting match.', **guild_kwargs)
 async def _rebalance(
 		interaction: Interaction,
 ): await run_slash(bot.commands.rebalance, interaction=interaction)
 
 
-@soracle_slash(name='preview', description='Privately preview a balance option (only you see it).', **guild_kwargs)
-async def _preview(
+@soracle_slash(name='manual', description='Admin: send a match back to manual picking.', **guild_kwargs)
+async def _manual(
 		interaction: Interaction,
-		option: int = SlashOption(description='Which option to preview', choices={"Option 1": 1, "Option 2": 2, "Option 3": 3}),
-): await run_slash(bot.commands.balance_preview, interaction=interaction, option=option)
+): await run_slash(bot.commands.manual, interaction=interaction)
 
 
 @soracle_slash(name='stats', description='Month-to-date JK2 stats (caps, returns, K/D and more).', **guild_kwargs)
