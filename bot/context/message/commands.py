@@ -229,6 +229,11 @@ async def _rebalance(ctx: MessageContext, args: str = None):
 	await bot.commands.rebalance(ctx)
 
 
+@soracle_command('manual')
+async def _manual(ctx: MessageContext, args: str = None):
+	await bot.commands.manual(ctx)
+
+
 @soracle_command('options', 'opts')
 async def _options(ctx: MessageContext, args: str = None):
 	await bot.commands.balance_options(ctx)
