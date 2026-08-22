@@ -1,6 +1,8 @@
+from datetime import datetime, timezone
 from nextcord import Embed, Colour, Streaming, Member
 from core.client import dc
 from core.utils import get_nick, join_and
+from bot import soracle
 
 
 class Embeds:
@@ -124,15 +126,10 @@ class Embeds:
 
 		return embed
 
-	def _balance_body(self, embed, option):
-		""" Shared label + team fields for a single balance option (live menu and preview). """
+	def _team_fields(self, embed, option):
+		""" Inline Red/Blue roster fields, one numbered player per line — reads as a
+			scoreboard instead of the wrapping chip line =options still uses. """
 		result = option.get('result') or {}
-		if option.get('label') or option.get('description'):
-			embed.description = " — ".join(filter(None, (
-				f"**{option['label']}**" if option.get('label') else None,
-				option.get('description')
-			)))
-
 		members = {p.id: p for p in self.m.players}
 		for team, ids_key, names_key, tier_key, mic_key in (
 			(self.m.teams[0], 'teamRedDiscordIds', 'teamRed', 'redTierTotal', 'redMic'),
@@ -140,28 +137,17 @@ class Embeds:
 		):
 			names = result.get(names_key) or []
 			ids = option.get(ids_key) or []
-			players = " ​ ".join((
-				f"`{get_nick(members[int(i)])}`" if i and int(i) in members else f"`{names[n] if n < len(names) else '?'}`"
-				for n, i in enumerate(ids)
+			roster = "\n".join((
+				"`{n}` {name}".format(
+					n=n + 1,
+					name=get_nick(members[int(i)]) if i and int(i) in members else (names[n] if n < len(names) else '?')
+				) for n, i in enumerate(ids)
 			)) or self.m.gt("empty")
 			embed.add_field(
-				name=f"{team.emoji} ​ **{team.name}** ​ `〈tier {result.get(tier_key, '?')}〉` 🎤{result.get(mic_key, '?')}",
-				value=" ​ ❲ ​ " + players + " ​ ❳",
-				inline=False
+				name=f"{team.emoji} {team.name.upper()} ​ `〈tier {result.get(tier_key, '?')}〉` 🎤{result.get(mic_key, '?')}",
+				value=roster,
+				inline=True
 			)
-
-	def balance_preview(self, menu, idx):
-		""" Private, single-option view (the /preview ephemeral response). No interactive bits. """
-		embed = Embed(
-			colour=Colour(0x50e3c2),
-			title=self.m.gt("__**{queue}** — option {n}/{total} (preview)__").format(
-				queue=self.m.queue.name[0].upper()+self.m.queue.name[1:],
-				n=idx + 1, total=len(menu.options)
-			)
-		)
-		self._balance_body(embed, menu.options[idx])
-		embed.set_footer(text=self.m.gt("Private preview — only captains' reactions on the public menu decide the teams."))
-		return embed
 
 	def balance_options(self, options):
 		""" All Soracle suggestions in one read-only embed (=options / auto-post). """
@@ -196,47 +182,23 @@ class Embeds:
 		embed.set_footer(text=self.m.gt("Suggestions only: set the teams manually however you like."))
 		return embed
 
-	def balance_menu(self, menu):
+	def auto_balance(self, option):
+		""" Posted once, automatically, when Soracle's Perfect Balance is applied — at
+			queue-fill time or via =rebalance. No interactive bits. """
 		embed = Embed(
 			colour=Colour(0x50e3c2),
-			title=self.m.gt("__**{queue}** — suggested teams (option {n}/{total})__").format(
-				queue=self.m.queue.name[0].upper()+self.m.queue.name[1:],
-				n=menu.idx + 1, total=len(menu.options)
-			)
+			title=self.m.queue.name[0].upper() + self.m.queue.name[1:],
+			timestamp=datetime.now(timezone.utc)
 		)
-		self._balance_body(embed, menu.option)
+		embed.set_author(name="⚖️ " + self.m.gt("Auto-Balance · {label}").format(label=option.get('label') or "Perfect Balance"))
+		self._team_fields(embed, option)
 
-		approvers = menu.approvers
-		if approvers:
-			embed.add_field(
-				name=self.m.gt("Captains"),
-				value=" ​ " + " ​ ".join((
-					f"{'✅' if c in menu.accepts else '☐'} {c.mention}" for c in approvers
-				)),
-				inline=False
-			)
-		else:
-			embed.add_field(
-				name=self.m.gt("Captains"),
-				value=" ​ " + self.m.gt("No captains in this match — any **two** players' {emoji} accepts.").format(
-					emoji=menu.ACCEPT_EMOJI
-				) + (f" ({len(menu.accepts)}/2)" if menu.accepts else ""),
-				inline=False
-			)
-		footer_lines = [self.m.gt(
-			"{options} view an option ​ · ​ {accept} accept ​ · ​ {manual} manual picks"
-		).format(
-			options="".join(menu.OPTION_EMOJIS[:len(menu.options)]),
-			accept=menu.ACCEPT_EMOJI, manual=menu.MANUAL_EMOJI
-		)]
-		if menu.timeout:
-			minutes, seconds = divmod(int(menu.timeout), 60)
-			duration = f"{minutes}m{seconds}s" if minutes and seconds else (f"{minutes} minutes" if minutes else f"{seconds} seconds")
-			footer_lines.append(self.m.gt("Option **{n}** is auto-accepted after {duration}.").format(
-				n=menu.idx + 1, duration=duration
-			))
-		footer_lines.append(self.m.gt("Other players can use `/preview` to check the options while captains decide."))
-		embed.add_field(name="—", value="\n".join(footer_lines) + "\n​", inline=False)
+		action_bits = []
+		if self.m.ranked:
+			action_bits.append(self.m.gt("{cmd} redo teams").format(cmd=f"`{self.m.qc.cfg.prefix}rebalance`"))
+		action_bits.append(self.m.gt("{cmd} manual picks").format(cmd=f"`{self.m.qc.cfg.prefix}manual`"))
+		action_bits.append(self.m.gt("more options at {url}").format(url=soracle.balancer_url()))
+		embed.add_field(name="—", value=" ​ · ​ ".join(action_bits), inline=False)
 		embed.set_footer(**self.footer)
 
 		return embed

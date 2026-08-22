@@ -1,7 +1,7 @@
 __all__ = [
 	'show_matches', 'show_teams', 'set_ready', 'sub_me', 'sub_for', 'put',
 	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual',
-	'rebalance', 'remove_match_player', 'balance_preview', 'force_start_match'
+	'rebalance', 'manual', 'remove_match_player', 'force_start_match'
 ]
 
 from nextcord import Member
@@ -33,9 +33,6 @@ async def show_matches(ctx):
 
 @author_match
 async def show_teams(ctx, match: bot.Match):
-	if match.state == bot.Match.BALANCE and match.balance_menu.options:
-		await ctx.reply(embed=match.embeds.balance_preview(match.balance_menu, match.balance_menu.idx))
-		return
 	if match.state not in [bot.Match.DRAFT, bot.Match.WAITING_REPORT]:
 		raise bot.Exc.MatchStateError('Match must be on draft or waiting report state.')
 	await match.draft.print(ctx)
@@ -85,7 +82,20 @@ async def pick(ctx, match: bot.Match, players: List[Member]):
 
 @author_match
 async def rebalance(ctx, match: bot.Match):
-	await match.balance_menu.reopen(ctx, ctx.author)
+	await match.auto_balance.rebalance(ctx, ctx.author)
+
+
+async def manual(ctx):
+	""" =manual: admin-only, so it isn't restricted to captains or match players
+		(mirrors force_start_match's lookup: prefer a match the admin is in, else any
+		match on the channel). """
+	ctx.check_perms(ctx.Perms.MODERATOR)
+	match = find(lambda m: m.qc == ctx.qc and ctx.author in m.players, bot.active_matches)
+	if match is None:
+		match = find(lambda m: m.qc == ctx.qc, bot.active_matches)
+	if match is None:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("No active match found on this channel."))
+	await match.auto_balance.go_manual(ctx, ctx.author)
 
 
 async def remove_match_player(ctx, player: Member):
@@ -103,21 +113,6 @@ async def force_start_match(ctx):
 	if match is None:
 		raise bot.Exc.NotFoundError(ctx.qc.gt("No drafting match found on this channel."))
 	await match.force_start(ctx)
-
-
-async def balance_preview(ctx, option: int):
-	""" Privately (ephemerally) show any balance option to anyone in the channel,
-		without changing the public menu. Slash-only — ephemeral needs an interaction. """
-	match = find(
-		lambda m: m.qc == ctx.qc and m.state == bot.Match.BALANCE and m.balance_menu.options,
-		bot.active_matches
-	)
-	if match is None:
-		raise bot.Exc.NotFoundError(ctx.qc.gt("There is no balance menu open in this channel right now."))
-	idx = option - 1
-	if not 0 <= idx < len(match.balance_menu.options):
-		raise bot.Exc.SyntaxError(ctx.qc.gt("Pick an option between 1 and {n}.").format(n=len(match.balance_menu.options)))
-	await ctx.reply_dm(embed=match.embeds.balance_preview(match.balance_menu, idx))
 
 
 async def put(ctx, match_id: int, player: Member, team_name: str):

@@ -164,7 +164,8 @@ async def commands_help(ctx, queue: str = None):
 		f"`{p}subme` · `{p}subfor @player` — substitutions",
 	]
 	if soracle_on:
-		match_lines.insert(0, f"`/preview <1-3>` — privately preview a balance option")
+		match_lines.insert(0, f"`{p}rebalance` — captains: re-apply Perfect Balance")
+		match_lines.insert(0, f"`{p}manual` — admins: switch a match to manual picks")
 	embed.add_field(name="Match", value="\n".join(match_lines), inline=False)
 	stat_lines = [
 		f"`{p}rank [@player]` — Elo rank profile",
