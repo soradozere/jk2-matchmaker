@@ -27,6 +27,13 @@ def site_url():
 	return getattr(cfg, 'PUBLIC_SITE_URL', 'https://jk2ctf.com').rstrip('/')
 
 
+def balancer_url():
+	""" The site's manual balance-options page — for anyone who wants something other
+		than the auto-applied Perfect Balance split (a different 12 players, a different
+		suggestion). Replaces the old in-Discord option picker. """
+	return f"{site_url()}/balancer"
+
+
 TIMEOUT = aiohttp.ClientTimeout(total=5)
 # Scoreboard uploads do more work server-side (parse, resolve names, store CSV),
 # so they get a longer budget than the read-only calls.

@@ -10,11 +10,12 @@ touching the bot.
 
 ## What this fork adds on top of PUBobot2
 
-- **Soracle balance menu** — when a 12-player queue fills, the bot fetches three balanced team
-  options (Perfect Balance / Fair Fight / Off-Role) and the captains pick via reactions:
-  ✅ accept (both captains), 🔄 next option, ✋ manual picks. Configurable auto-accept timeout,
-  and `/rebalance` returns a drafting match to the menu. Any failure (unlinked player, API down,
-  wrong queue size) falls back to the untouched vanilla draft.
+- **Soracle auto-balance** — when a 12-player queue fills, the bot fetches Soracle's Perfect
+  Balance suggestion and applies it immediately, no vote. An admin can type `/manual` to send
+  the match back to the draft stage, and a captain (or admin) can type `/rebalance` from there
+  to auto-balance it again. Queues over 12 players, and any other failure (unlinked player, API
+  down), fall back to the untouched vanilla draft. More balance options live on the site at
+  `/balancer`.
 - **`/tier`** (also `=tier`) — a player's site profile: tier, role ratings, tooltip.
 - **`/stats`** (also `=stats`) — month-to-date CTF stats from Soracle: matches, W/L, K/D, caps,
   returns, assists, base cleans, flag grabs, flag hold time. Vanilla's admin stats tools moved
