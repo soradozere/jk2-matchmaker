@@ -19,6 +19,9 @@ class MessageContext(Context):
 	async def notice(self, content: str = None, embed: Embed = None):
 		await (self.message.thread or self.message.channel).send(content=content, embed=embed)
 
+	async def reply_dm(self, content: str = None, embed: Embed = None):
+		await self.author.send(content=content, embed=embed)
+
 	async def error(self, *args, **kwargs):
 		await self.message.reply(embed=error_embed(*args, **kwargs))
 
