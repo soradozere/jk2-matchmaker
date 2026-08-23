@@ -213,10 +213,11 @@ async def leaderboard(ctx, page: int = 1):
 		await ctx.reply(embed=embed)
 		return
 
-	# display as md table, wrapped in an embed for a title/footer and the top-3 medals
-	# and hot/cold streak flags a plain code block can't carry on its own. № stays a plain
-	# int (medals prefix the name instead) so discord_table's numeric column detection —
-	# and the right-alignment it drives — still applies to it.
+	# Plain message, not an embed — embeds cap out around ~430px wide regardless of
+	# window size, too narrow for a 6-column table (it wraps mid-row). A bare message
+	# gets the full channel width instead. Top-3 medals prefix the name; № stays a
+	# plain int (medals baked into the cell would defeat discord_table's numeric
+	# column detection, and with it the right-alignment).
 	medals = {0: "🥇 ", 1: "🥈 ", 2: "🥉 "}
 	rows = []
 	for n in range(len(data)):
@@ -239,10 +240,10 @@ async def leaderboard(ctx, page: int = 1):
 			)
 		])
 
-	embed = Embed(
-		title="🏆 " + ctx.qc.gt("Leaderboard"),
-		colour=Colour(0x7289DA),
-		description=discord_table(["№", "Rating", "Rank", "Nickname", "Matches", "W/L/D"], rows)
+	header = "🏆 {title} — {page_info}".format(
+		title=ctx.qc.gt("Leaderboard"),
+		page_info=ctx.qc.gt("Page {page} of {pages}").format(page=page + 1, pages=pages)
 	)
-	embed.set_footer(text=ctx.qc.gt("Page {page} of {pages}").format(page=page + 1, pages=pages))
-	await ctx.reply(embed=embed)
+	await ctx.reply(
+		header + "\n" + discord_table(["№", "Rating", "Rank", "Nickname", "Matches", "W/L/D"], rows)
+	)
