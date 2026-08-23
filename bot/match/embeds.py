@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from nextcord import Embed, Colour, Streaming, Member
 from core.client import dc
 from core.utils import get_nick, join_and
@@ -30,6 +29,19 @@ class Embeds:
 				return f'{self.m.rank_str(p)}{p.mention}'
 			return f'`{self.m.rank_str(p)}`{p.mention}'
 		return p.mention
+
+	def _ranked_display(self, p: Member, name: str):
+		""" Like _ranked_nick, but with a caller-supplied display name — used to show the
+			name Soracle has on record (the balancer site's name) instead of the Discord
+			nickname, when a balance option is available to read it from. """
+		if self.m.ranked:
+			if self.m.qc.cfg.emoji_ranks:
+				return f'{self.m.rank_str(p)}`{name}`'
+			return f'`{self.m.rank_str(p)}{name}`'
+		return f'`{name}`'
+
+	def _team_avg_rating(self, team):
+		return sum((self.m.ratings[p.id] for p in team)) // (len(team) or 1)
 
 	def check_in(self, not_ready):
 		embed = Embed(
@@ -83,7 +95,7 @@ class Embeds:
 
 		teams_names = [
 			f"{t.emoji} \u200b **{t.name}**" +
-			(f" \u200b `〈{sum((self.m.ratings[p.id] for p in t))//(len(t) or 1)}〉`" if self.m.ranked else "")
+			(f" \u200b `〈{self._team_avg_rating(t)}〉`" if self.m.ranked else "")
 			for t in self.m.teams[:2]
 		]
 		team_players = [
@@ -126,29 +138,6 @@ class Embeds:
 
 		return embed
 
-	def _team_fields(self, embed, option):
-		""" Inline Red/Blue roster fields, one numbered player per line — reads as a
-			scoreboard instead of the wrapping chip line =options still uses. """
-		result = option.get('result') or {}
-		members = {p.id: p for p in self.m.players}
-		for team, ids_key, names_key, tier_key, mic_key in (
-			(self.m.teams[0], 'teamRedDiscordIds', 'teamRed', 'redTierTotal', 'redMic'),
-			(self.m.teams[1], 'teamBlueDiscordIds', 'teamBlue', 'blueTierTotal', 'blueMic'),
-		):
-			names = result.get(names_key) or []
-			ids = option.get(ids_key) or []
-			roster = "\n".join((
-				"`{n}` {name}".format(
-					n=n + 1,
-					name=get_nick(members[int(i)]) if i and int(i) in members else (names[n] if n < len(names) else '?')
-				) for n, i in enumerate(ids)
-			)) or self.m.gt("empty")
-			embed.add_field(
-				name=f"{team.emoji} {team.name.upper()} ​ `〈tier {result.get(tier_key, '?')}〉` 🎤{result.get(mic_key, '?')}",
-				value=roster,
-				inline=True
-			)
-
 	def balance_options(self, options):
 		""" All Soracle suggestions in one read-only embed (=options / auto-post). """
 		embed = Embed(
@@ -182,27 +171,6 @@ class Embeds:
 		embed.set_footer(text=self.m.gt("Suggestions only: set the teams manually however you like."))
 		return embed
 
-	def auto_balance(self, option):
-		""" Posted once, automatically, when Soracle's Perfect Balance is applied — at
-			queue-fill time or via =rebalance. No interactive bits. """
-		embed = Embed(
-			colour=Colour(0x50e3c2),
-			title=self.m.queue.name[0].upper() + self.m.queue.name[1:],
-			timestamp=datetime.now(timezone.utc)
-		)
-		embed.set_author(name="⚖️ " + self.m.gt("Auto-Balance · {label}").format(label=option.get('label') or "Perfect Balance"))
-		self._team_fields(embed, option)
-
-		action_bits = []
-		if self.m.ranked:
-			action_bits.append(self.m.gt("{cmd} redo teams").format(cmd=f"`{self.m.qc.cfg.prefix}rebalance`"))
-		action_bits.append(self.m.gt("{cmd} manual picks").format(cmd=f"`{self.m.qc.cfg.prefix}manual`"))
-		action_bits.append(self.m.gt("more options at {url}").format(url=soracle.balancer_url()))
-		embed.add_field(name="—", value=" ​ · ​ ".join(action_bits), inline=False)
-		embed.set_footer(**self.footer)
-
-		return embed
-
 	def final_message(self):
 		show_ranks = bool(self.m.ranked and not self.m.qc.cfg.rating_nicks)
 		embed = Embed(
@@ -222,25 +190,58 @@ class Embeds:
 			)
 			embed.add_field(name=self.m.gt("Players"), value=players, inline=False)
 		elif len(self.m.teams[0]):  # team vs team
-			teams_names = [
-				f"{t.emoji} \u200b **{t.name}**" +
-				(f" \u200b `〈{sum((self.m.ratings[p.id] for p in t))//(len(t) or 1)}〉`" if self.m.ranked else "")
-				for t in self.m.teams[:2]
-			]
-			team_players = [
-				" \u200b " +
-				" \u200b ".join([
-					self._ranked_mention(p) for p in t
-				])
-				for t in self.m.teams[:2]
-			]
-			team_players[1] += "\n\u200b"  # Extra empty line
-			embed.add_field(name=teams_names[0], value=team_players[0], inline=False)
-			embed.add_field(name=teams_names[1], value=team_players[1], inline=False)
+			option = self.m.auto_balance.last_option
+			if option:
+				# Auto-balanced: bold caps team header (rating/tier/mic together) and a numbered
+				# roster, inline so the two teams sit side by side — matches the site's own name
+				# for each player where Soracle has it, instead of whatever their Discord nick is.
+				result = option.get('result') or {}
+				tier_mic_keys = (('redTierTotal', 'redMic'), ('blueTierTotal', 'blueMic'))
+				soracle_names = {}
+				for ids_key, names_key in (('teamRedDiscordIds', 'teamRed'), ('teamBlueDiscordIds', 'teamBlue')):
+					ids, names = option.get(ids_key) or [], result.get(names_key) or []
+					soracle_names.update({int(i): names[n] for n, i in enumerate(ids) if i and n < len(names)})
+				for t, (tier_key, mic_key) in zip(self.m.teams[:2], tier_mic_keys):
+					name = f"{t.emoji} {t.name.upper()}"
+					if self.m.ranked:
+						name += f" ​ `〈{self._team_avg_rating(t)}〉`"
+					name += f" ​ `〈tier {result.get(tier_key, '?')}〉` 🎤{result.get(mic_key, '?')}"
+					roster = "\n".join(
+						"`{n}` {label}".format(n=n + 1, label=self._ranked_display(p, soracle_names.get(p.id) or get_nick(p)))
+						for n, p in enumerate(t)
+					) or self.m.gt("empty")
+					embed.add_field(name=name, value=roster, inline=True)
+			else:
+				teams_names = [
+					f"{t.emoji} ​ **{t.name}**" +
+					(f" ​ `〈{self._team_avg_rating(t)}〉`" if self.m.ranked else "")
+					for t in self.m.teams[:2]
+				]
+				team_players = [
+					" ​ " +
+					" ​ ".join([
+						self._ranked_mention(p) for p in t
+					])
+					for t in self.m.teams[:2]
+				]
+				team_players[1] += "\n​"  # Extra empty line
+				embed.add_field(name=teams_names[0], value=team_players[0], inline=False)
+				embed.add_field(name=teams_names[1], value=team_players[1], inline=False)
 			if self.m.ranked or self.m.cfg['pick_captains']:
 				embed.add_field(
 					name=self.m.gt("Captains"),
-					value=" \u200b " + join_and([self.m.teams[0][0].mention, self.m.teams[1][0].mention]),
+					value=" ​ " + join_and([self.m.teams[0][0].mention, self.m.teams[1][0].mention]),
+					inline=False
+				)
+			if option:
+				action_bits = []
+				if self.m.ranked:
+					action_bits.append(self.m.gt("{cmd} redo teams").format(cmd=f"`{self.m.qc.cfg.prefix}rebalance`"))
+					action_bits.append(self.m.gt("{cmd} manual picks").format(cmd=f"`{self.m.qc.cfg.prefix}manual`"))
+				action_bits.append(self.m.gt("more options at {url}").format(url=soracle.balancer_url()))
+				embed.add_field(
+					name="⚖️ " + (option.get('label') or self.m.gt("Perfect Balance")),
+					value=" ​ · ​ ".join(action_bits) + "\n​",
 					inline=False
 				)
 

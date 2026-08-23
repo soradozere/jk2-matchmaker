@@ -140,10 +140,18 @@ def get_nick(user):
 
 
 def discord_table(header, rows):
+	""" Renders a monospace markdown table. Columns whose values are all numbers are
+		right-aligned; everything else is left-aligned — PrettyTable defaults every
+		column to centered, which staggers each row's starting position whenever cell
+		width varies and reads as misaligned rather than as a table. """
 	t = PrettyTable()
 	t.set_style(MARKDOWN)
+	t.field_names = header
 	t.header = False
 	t.add_row(header)
+	for i, name in enumerate(header):
+		numeric = bool(rows) and all(isinstance(row[i], (int, float)) for row in rows)
+		t.align[name] = 'r' if numeric else 'l'
 	t.add_rows(rows)
 	content = t.get_string().split("\n")
 	text = "```markdown\n" + content[0].strip("|")

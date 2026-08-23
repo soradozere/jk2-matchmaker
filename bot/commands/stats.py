@@ -213,21 +213,36 @@ async def leaderboard(ctx, page: int = 1):
 		await ctx.reply(embed=embed)
 		return
 
-	# display as md table
-	await ctx.reply(
-		discord_table(
-			["№", "Rating〈Ξ〉", "Nickname", "Matches", "W/L/D"],
-			[[
-				(page * 10) + (n + 1),
-				str(data[n]['rating']) + ctx.qc.rating_rank(data[n]['rating'])['rank'],
-				data[n]['nick'].strip(),
-				int(data[n]['wins'] + data[n]['losses'] + data[n]['draws']),
-				"{0}/{1}/{2} ({3}%)".format(
-					data[n]['wins'],
-					data[n]['losses'],
-					data[n]['draws'],
-					int(data[n]['wins'] * 100 / ((data[n]['wins'] + data[n]['losses']) or 1))
-				)
-			] for n in range(len(data))]
-		)
+	# display as md table, wrapped in an embed for a title/footer and the top-3 medals
+	# and hot/cold streak flags a plain code block can't carry on its own. № stays a plain
+	# int (medals prefix the name instead) so discord_table's numeric column detection —
+	# and the right-alignment it drives — still applies to it.
+	medals = {0: "🥇 ", 1: "🥈 ", 2: "🥉 "}
+	rows = []
+	for n in range(len(data)):
+		nick = medals.get((page * 10) + n, "") + data[n]['nick'].strip()
+		if data[n]['streak'] >= 3:
+			nick += " 🔥"
+		elif data[n]['streak'] <= -3:
+			nick += " 🥶"
+		rows.append([
+			(page * 10) + n + 1,
+			data[n]['rating'],
+			ctx.qc.rating_rank(data[n]['rating'])['rank'],
+			nick,
+			int(data[n]['wins'] + data[n]['losses'] + data[n]['draws']),
+			"{0}/{1}/{2} ({3}%)".format(
+				data[n]['wins'],
+				data[n]['losses'],
+				data[n]['draws'],
+				int(data[n]['wins'] * 100 / ((data[n]['wins'] + data[n]['losses']) or 1))
+			)
+		])
+
+	embed = Embed(
+		title="🏆 " + ctx.qc.gt("Leaderboard"),
+		colour=Colour(0x7289DA),
+		description=discord_table(["№", "Rating", "Rank", "Nickname", "Matches", "W/L/D"], rows)
 	)
+	embed.set_footer(text=ctx.qc.gt("Page {page} of {pages}").format(page=page + 1, pages=pages))
+	await ctx.reply(embed=embed)

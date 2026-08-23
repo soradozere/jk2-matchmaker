@@ -167,16 +167,27 @@ async def commands_help(ctx, queue: str = None):
 		match_lines.insert(0, f"`{p}rebalance` — captains: re-apply Perfect Balance")
 		match_lines.insert(0, f"`{p}manual` — admins: switch a match to manual picks")
 	embed.add_field(name="Match", value="\n".join(match_lines), inline=False)
-	stat_lines = [
-		f"`{p}rank [@player]` — Elo rank profile",
-		f"`{p}lb` — leaderboard",
-	]
 	if soracle_on:
-		stat_lines = [
-			f"`{p}tier [@player]` — player tier & roles",
-			f"`{p}stats [@player]` — month-to-date stats",
-		] + stat_lines
-	embed.add_field(name="Stats & ranks", value="\n".join(stat_lines), inline=False)
+		embed.add_field(name="📊 Leaderboards", value=" · ".join(
+			f"`{p}{c}`" for c in (
+				"lb", "month", "kills", "deaths", "caps", "grabs", "bc",
+				"dbs", "dfa", "doom", "flaghold", "returns", "streak"
+			)
+		), inline=False)
+		embed.add_field(name="👤 Your stats", value=" · ".join(
+			f"`{p}{c}`" for c in (
+				"tier", "stats", "rank", "achievements", "lastgame",
+				"redblue", "nemesis", "friend", "curse"
+			)
+		), inline=False)
+		embed.add_field(name="🏆 Monthly awards", value=" · ".join(
+			f"`{p}{c}`" for c in ("potm", "rivals", "duos", "wrapped")
+		), inline=False)
+	else:
+		embed.add_field(name="Stats & ranks", value="\n".join([
+			f"`{p}rank [@player]` — Elo rank profile",
+			f"`{p}lb` — leaderboard",
+		]), inline=False)
 	embed.add_field(name="JK2 servers", value="\n".join([
 		f"`{p}servers` — live server status",
 		f"`{p}pug` — toggle the pug ping role",
