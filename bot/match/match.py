@@ -439,11 +439,14 @@ class Match:
 		await ctx.notice(msg)
 
 	async def final_message(self, ctx):
-		#  Embed message with teams
+		#  Embed message with teams. Ping players when auto-balance just set the teams with
+		#  no player interaction (mentions inside the embed itself don't notify on Discord) —
+		#  a manually-drafted match skips this since the picking players were already watching.
+		content = " ".join(p.mention for p in self.players) if self.cfg['soracle_balance'] and self.auto_balance.last_option else None
 		try:
-			await ctx.notice(embed=self.embeds.final_message())
-		except DiscordException:
-			pass
+			await ctx.notice(content=content, embed=self.embeds.final_message())
+		except DiscordException as e:
+			log.error(f"Match {self.id}: failed to post the final message: {str(e)}")
 
 	async def finish_match(self, ctx):
 		bot.active_matches.remove(self)

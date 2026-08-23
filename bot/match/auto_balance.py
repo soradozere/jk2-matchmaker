@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from nextcord import DiscordException
-
 import bot
 from bot import soracle
 from core.utils import join_and, get_nick
@@ -11,10 +9,12 @@ class AutoBalance:
 	""" Applies Soracle's Perfect Balance suggestion to the match automatically — no menu,
 		no reactions, no vote. Queues over 12 players always fall back to manual picks (Soracle
 		only balances exactly 12). On any other failure (unlinked players, Soracle down) the
-		match drops into the untouched vanilla draft flow. """
+		match drops into the untouched vanilla draft flow. Doesn't post its own message — the
+		result rides in Match.final_message() so a queue popping shows one message, not two. """
 
 	def __init__(self, match):
 		self.m = match
+		self.last_option = None  # the applied Soracle option, for final_message() to read
 
 		if bot.soracle.enabled() and self.m.cfg['soracle_balance'] and self.m.cfg['pick_teams'] == "draft":
 			self.m.states.append(self.m.BALANCE)
@@ -63,6 +63,7 @@ class AutoBalance:
 		self.m.teams[0].set(leads[:1])
 		self.m.teams[1].set(leads[1:2])
 		self.m.captains = leads
+		self.last_option = None  # picks are manual again — final_message() shouldn't show stale tiers
 
 		self.m.states = [self.m.WAITING_REPORT] if self.m.ranked else []
 		self.m.state = self.m.DRAFT
@@ -77,8 +78,9 @@ class AutoBalance:
 
 	async def _fetch_and_apply(self, ctx):
 		""" Fetches Soracle's Perfect Balance suggestion and applies it. Returns True on
-			success (teams set, a confirmation embed posted, DRAFT dropped from the state
-			queue if it was still ahead). On any failure, notifies and returns False. """
+			success (teams set, last_option recorded for final_message(), DRAFT dropped
+			from the state queue if it was still ahead). On any failure, notifies and
+			returns False. """
 		if len(self.m.players) > 12:
 			await ctx.notice("\n".join((
 				self.m.gt("Auto-balancing supports 12 players — proceeding to manual picks."),
@@ -114,11 +116,6 @@ class AutoBalance:
 			return False
 
 		log.info(f"Match {self.m.id}: Perfect Balance applied automatically.")
-		try:
-			pings = " ".join(p.mention for p in self.m.players)
-			await ctx.channel.send(content=pings, embed=self.m.embeds.auto_balance(option))
-		except DiscordException as e:
-			log.error(f"Match {self.m.id}: failed to post the auto-balance result: {str(e)}")
 		return True
 
 	def _apply(self, option):
@@ -144,6 +141,7 @@ class AutoBalance:
 			self.m.teams[n].set(team)
 		self.m.teams[2].clear()
 		self.m.captains = [t[0] for t in self.m.teams[:2] if len(t)]
+		self.last_option = option
 
 		if self.m.DRAFT in self.m.states:
 			self.m.states.remove(self.m.DRAFT)

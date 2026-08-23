@@ -123,6 +123,11 @@ async def _queues(ctx: MessageContext, args: str = None):
 	await bot.commands.show_queues(ctx)
 
 
+@message_command('help', 'commands')
+async def _commands_help(ctx: MessageContext, args: str = None):
+	await bot.commands.commands_help(ctx)
+
+
 @message_command('teams')
 async def _teams(ctx: MessageContext, args: str = None):
 	await bot.commands.show_teams(ctx)
