@@ -774,6 +774,19 @@ async def _cointoss(
 ): await run_slash(bot.commands.cointoss, interaction=interaction, side=side)
 
 
+@dc.slash_command(name='tz', description='Current time in major timezones around the world.', **guild_kwargs)
+async def _tz(
+		interaction: Interaction,
+): await run_slash(bot.commands.tz, interaction=interaction)
+
+
+@dc.slash_command(name='urban', description='Look up a term on Urban Dictionary.', **guild_kwargs)
+async def _urban(
+		interaction: Interaction,
+		term: str
+): await run_slash(bot.commands.urban, interaction=interaction, term=term)
+
+
 @dc.slash_command(name='help', description='Show the everyday commands.', **guild_kwargs)
 async def _help(
 		interaction: Interaction,
