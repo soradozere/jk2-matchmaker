@@ -1,4 +1,4 @@
-from nextcord import Interaction
+from nextcord import Interaction, Forbidden
 
 from core.utils import ok_embed, error_embed
 
@@ -24,7 +24,10 @@ class SlashContext(Context):
 		if not self.interaction.response.is_done():
 			await self.interaction.response.send_message(*args, **kwargs, ephemeral=True)
 		else:
-			await self.interaction.user.send(*args, **kwargs)
+			try:
+				await self.interaction.user.send(*args, **kwargs)
+			except Forbidden:
+				await self.interaction.followup.send(*args, **kwargs, ephemeral=True)
 
 	async def notice(self, *args, **kwargs):
 		if not self.interaction.response.is_done():
