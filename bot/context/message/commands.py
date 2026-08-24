@@ -133,6 +133,16 @@ async def _teams(ctx: MessageContext, args: str = None):
 	await bot.commands.show_teams(ctx)
 
 
+@message_command('tz')
+async def _tz(ctx: MessageContext, args: str = None):
+	await bot.commands.tz(ctx)
+
+
+@message_command('urban')
+async def _urban(ctx: MessageContext, args: str = None):
+	await bot.commands.urban(ctx, term=args)
+
+
 @message_command('subme')
 async def _sub_me(ctx: MessageContext, args: str = None):
 	await bot.commands.sub_me(ctx)

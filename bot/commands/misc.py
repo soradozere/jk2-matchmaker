@@ -1,18 +1,39 @@
-__all__ = ['auto_ready', 'expire', 'default_expire', 'allow_offline', 'switch_dms', 'cointoss', 'show_help', 'set_nick', 'commands_help']
+__all__ = [
+	'auto_ready', 'expire', 'default_expire', 'allow_offline', 'switch_dms', 'cointoss',
+	'show_help', 'set_nick', 'commands_help', 'tz', 'urban'
+]
 
+import re
 from time import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 from random import randint
+from zoneinfo import ZoneInfo
 
 from nextcord import Embed, Colour
 
-from core.utils import seconds_to_str, find
+from core.utils import seconds_to_str, find, discord_table
 from core.database import db
 from core.config import cfg
 
 import bot
 
 MAX_EXPIRE_TIME = timedelta(hours=12)
+
+# (display label, IANA zone) — spans the regions this community actually plays out of.
+MAJOR_TIMEZONES = [
+	("Los Angeles", "America/Los_Angeles"),
+	("Denver", "America/Denver"),
+	("Chicago", "America/Chicago"),
+	("New York", "America/New_York"),
+	("London", "Europe/London"),
+	("Berlin", "Europe/Berlin"),
+	("Moscow", "Europe/Moscow"),
+	("Mumbai", "Asia/Kolkata"),
+	("Tokyo", "Asia/Tokyo"),
+	("Sydney", "Australia/Sydney"),
+]
+
+_UD_LINK_RE = re.compile(r"[\[\]]")  # Urban Dictionary wraps cross-linked words in [brackets]
 
 
 async def auto_ready(ctx, duration: timedelta = None):
@@ -131,6 +152,47 @@ async def cointoss(ctx, side: str = None):
 		))
 
 
+async def tz(ctx):
+	now = datetime.now(ZoneInfo("UTC"))
+	rows = [
+		[label, now.astimezone(ZoneInfo(zone)).strftime("%I:%M %p").lstrip("0"), now.astimezone(ZoneInfo(zone)).strftime("%Z")]
+		for label, zone in MAJOR_TIMEZONES
+	]
+	await ctx.reply(
+		"🌍 " + ctx.qc.gt("Current time around the world") + "\n" +
+		discord_table([ctx.qc.gt("Location"), ctx.qc.gt("Time"), "TZ"], rows)
+	)
+
+
+async def urban(ctx, term: str = None):
+	if not term:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Usage: {cmd}").format(cmd=f"`{ctx.qc.cfg.prefix}urban <term>`"))
+
+	try:
+		results = await bot.urban.define(term)
+	except bot.urban.UrbanError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	if not results:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("No definition found for **{term}**.").format(term=term))
+
+	d = results[0]
+	definition = _UD_LINK_RE.sub("", d.get('definition') or "")[:900]
+	example = _UD_LINK_RE.sub("", d.get('example') or "")[:500]
+
+	embed = Embed(
+		title=f"📖 {d.get('word', term)}",
+		url=d.get('permalink'),
+		colour=Colour(0x1d2439),
+		description=definition
+	)
+	if example:
+		embed.add_field(name=ctx.qc.gt("Example"), value=example, inline=False)
+	embed.add_field(name="👍", value=str(d.get('thumbs_up', 0)), inline=True)
+	embed.add_field(name="👎", value=str(d.get('thumbs_down', 0)), inline=True)
+	embed.set_footer(text="urbandictionary.com")
+	await ctx.reply(embed=embed)
+
+
 async def show_help(ctx, queue: str = None):
 	if queue is None:
 		if not ctx.qc.cfg.description:
@@ -191,6 +253,11 @@ async def commands_help(ctx, queue: str = None):
 	embed.add_field(name="JK2 servers", value="\n".join([
 		f"`{p}servers` — live server status",
 		f"`{p}pug` — toggle the pug ping role",
+	]), inline=False)
+	embed.add_field(name="Fun", value="\n".join([
+		f"`{p}tz` — current time in major timezones",
+		f"`{p}urban <term>` — Urban Dictionary lookup",
+		f"`{p}cointoss [heads/tails]` — flip a coin",
 	]), inline=False)
 	await ctx.reply_dm(embed=embed)
 
