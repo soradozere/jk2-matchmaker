@@ -252,6 +252,6 @@ async def on_member_join(member):
 
 @dc.event
 async def on_member_remove(member):
-	for qc in filter(lambda i: i.id == member.guild.id, bot.queue_channels.values()):
+	for qc in filter(lambda i: i.guild_id == member.guild.id, bot.queue_channels.values()):
 		await qc.remove_members(member, reason="left guild")
 	await bot.welcome.on_leave(member)
