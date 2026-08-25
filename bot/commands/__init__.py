@@ -7,3 +7,4 @@ from .misc import *
 from .soracle import *
 from .pug import *
 from .welcome import *
+from .youtube import *

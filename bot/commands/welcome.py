@@ -2,20 +2,14 @@ __all__ = ['set_welcome_channel', 'set_welcome_message', 'set_leave_message', 'w
 
 from nextcord import TextChannel, Embed, Colour
 
-from core.utils import find
+from core.utils import resolve_channel
 
 import bot
 
 
-def _resolve_channel(guild, arg):
-	if arg.startswith('<#') and arg.endswith('>'):
-		return guild.get_channel(int(arg[2:-1]))
-	return find(lambda c: c.name.lower() == arg.lstrip('#').lower(), guild.text_channels)
-
-
 async def set_welcome_channel(ctx, channel: TextChannel = None, channel_name: str = None):
 	ctx.check_perms(ctx.Perms.ADMIN)
-	target = channel or _resolve_channel(ctx.channel.guild, channel_name or "")
+	target = channel or resolve_channel(ctx.channel.guild, channel_name or "")
 	if target is None:
 		raise bot.Exc.NotFoundError(ctx.qc.gt("Channel not found."))
 	await bot.welcome.set_channel(ctx.channel.guild.id, target.id)
