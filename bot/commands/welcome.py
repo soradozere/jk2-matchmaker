@@ -40,7 +40,7 @@ async def welcome_preview(ctx):
 		without waiting for someone to actually join or leave. """
 	ctx.check_perms(ctx.Perms.ADMIN)
 	await bot.welcome.on_join(ctx.author)
-	await bot.welcome.on_leave(ctx.author)
+	await bot.welcome.on_leave(ctx.author, preview=True)
 
 
 async def welcome_config(ctx):

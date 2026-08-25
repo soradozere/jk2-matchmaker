@@ -21,7 +21,7 @@ DEFAULT_WELCOME_MESSAGE = (
 	"Join a queue with `=j` / `++`, or `=help` for the full command list.\n"
 	"Download the NWH client and check stats at: {site}"
 )
-DEFAULT_LEAVE_MESSAGE = "👋 **{name}** left after `{duration}` in the server."
+DEFAULT_LEAVE_MESSAGE = "👋 **{name}** left after `{duration}` in the server — {leave_count_ordinal} time leaving."
 
 db.ensure_table(dict(
 	tname="guild_welcome",
@@ -32,6 +32,16 @@ db.ensure_table(dict(
 		dict(cname="leave_message", ctype=db.types.text),
 	],
 	primary_keys=["guild_id"]
+))
+
+db.ensure_table(dict(
+	tname="member_leaves",
+	columns=[
+		dict(cname="guild_id", ctype=db.types.int),
+		dict(cname="user_id", ctype=db.types.int),
+		dict(cname="count", ctype=db.types.int, default=0),
+	],
+	primary_keys=["guild_id", "user_id"]
 ))
 
 
@@ -73,6 +83,24 @@ def _humanize_duration(seconds):
 	years, rem_days = divmod(days, 365)
 	months = rem_days // 30
 	return " ".join(filter(None, [unit(years, "year"), unit(months, "month") if months else None]))
+
+
+def _ordinal(n):
+	if 10 <= n % 100 <= 20:
+		suffix = "th"
+	else:
+		suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+	return f"{n}{suffix}"
+
+
+async def _increment_leave_count(guild_id, user_id):
+	row = await db.select_one(['count'], 'member_leaves', where=dict(guild_id=guild_id, user_id=user_id))
+	count = (row['count'] if row else 0) + 1
+	if row is None:
+		await db.insert('member_leaves', dict(guild_id=guild_id, user_id=user_id, count=count))
+	else:
+		await db.update('member_leaves', dict(count=count), keys=dict(guild_id=guild_id, user_id=user_id))
+	return count
 
 
 async def get_cfg(guild_id):
@@ -122,7 +150,7 @@ async def on_join(member):
 	await _post(member.guild, cfg['channel_id'], text)
 
 
-async def on_leave(member):
+async def on_leave(member, preview=False):
 	cfg = await get_cfg(member.guild.id)
 	if not cfg:
 		return
@@ -130,8 +158,16 @@ async def on_leave(member):
 		duration = _humanize_duration((datetime.now(timezone.utc) - member.joined_at).total_seconds())
 	else:
 		duration = "an unknown amount of time"
+	if preview:
+		# =welcome_preview must not inflate a real leave count just for looking —
+		# peek at what the next increment would be instead of writing it.
+		row = await db.select_one(['count'], 'member_leaves', where=dict(guild_id=member.guild.id, user_id=member.id))
+		leave_count = (row['count'] if row else 0) + 1
+	else:
+		leave_count = await _increment_leave_count(member.guild.id, member.id)
 	text = _safe_format(
 		cfg['leave_message'] or DEFAULT_LEAVE_MESSAGE,
-		name=get_nick(member), guild=member.guild.name, duration=duration
+		name=get_nick(member), guild=member.guild.name, duration=duration,
+		leave_count=leave_count, leave_count_ordinal=_ordinal(leave_count)
 	)
 	await _post(member.guild, cfg['channel_id'], text)
