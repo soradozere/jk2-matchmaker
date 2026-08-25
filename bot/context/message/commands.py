@@ -133,6 +133,36 @@ async def _teams(ctx: MessageContext, args: str = None):
 	await bot.commands.show_teams(ctx)
 
 
+@message_command('tz')
+async def _tz(ctx: MessageContext, args: str = None):
+	await bot.commands.tz(ctx)
+
+
+@message_command('set_welcome_channel')
+async def _set_welcome_channel(ctx: MessageContext, args: str = None):
+	await bot.commands.set_welcome_channel(ctx, channel_name=args)
+
+
+@message_command('set_welcome_message')
+async def _set_welcome_message(ctx: MessageContext, args: str = None):
+	await bot.commands.set_welcome_message(ctx, message=args)
+
+
+@message_command('set_leave_message')
+async def _set_leave_message(ctx: MessageContext, args: str = None):
+	await bot.commands.set_leave_message(ctx, message=args)
+
+
+@message_command('welcome_preview')
+async def _welcome_preview(ctx: MessageContext, args: str = None):
+	await bot.commands.welcome_preview(ctx)
+
+
+@message_command('urban')
+async def _urban(ctx: MessageContext, args: str = None):
+	await bot.commands.urban(ctx, term=args)
+
+
 @message_command('subme')
 async def _sub_me(ctx: MessageContext, args: str = None):
 	await bot.commands.sub_me(ctx)
