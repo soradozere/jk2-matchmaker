@@ -75,7 +75,9 @@ async def _post(guild, channel_id, text):
 	if not channel_id or (channel := guild.get_channel(channel_id)) is None:
 		return
 	try:
-		await channel.send(text)
+		# suppress_embeds: a plain link in the message (e.g. the site URL) would
+		# otherwise get Discord's auto-unfurled preview card under every message.
+		await channel.send(text, suppress_embeds=True)
 	except DiscordException as e:
 		log.error(f"Could not post welcome/leave message in guild {guild.id}: {e}")
 
