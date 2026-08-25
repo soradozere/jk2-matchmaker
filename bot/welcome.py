@@ -12,13 +12,13 @@ from nextcord import DiscordException
 
 from core.database import db
 from core.console import log
-from core.utils import get_nick, seconds_to_str
+from core.utils import get_nick
 
 import bot
 
 DEFAULT_WELCOME_MESSAGE = (
-	"👋 Welcome to **{guild}**, {member}! Join a queue with `=j` / `++`, "
-	"or `=help` for the full command list.\n\n"
+	"👋 Hey {member}! Welcome to **{guild}**!\n\n"
+	"Join a queue with `=j` / `++`, or `=help` for the full command list.\n"
 	"Download the NWH client and check stats at: {site}"
 )
 DEFAULT_LEAVE_MESSAGE = "👋 **{name}** left after `{duration}` in the server."
@@ -44,6 +44,35 @@ class _SafeDict(dict):
 
 def _safe_format(template, **kwargs):
 	return string.Formatter().vformat(template, (), _SafeDict(**kwargs))
+
+
+def _humanize_duration(seconds):
+	""" 'time in server' for the leave message, in plain words instead of a
+		H:MM:SS timer. Sub-day durations show two units (hours+minutes,
+		minutes+seconds) since the precision is meaningful there — a same-day
+		leave is worth distinguishing from a week-long stay. Day-scale and up
+		collapses to a single unit (days, or years once you're over a year) —
+		nobody needs hour-level precision for a months-old member. """
+	def unit(n, name):
+		return f"{n} {name}{'s' if n != 1 else ''}"
+
+	seconds = int(seconds)
+	if seconds < 60:
+		return unit(seconds, "second")
+	if seconds < 3600:
+		m, s = divmod(seconds, 60)
+		return " ".join(filter(None, [unit(m, "minute"), unit(s, "second") if s else None]))
+	if seconds < 86400:
+		h, rem = divmod(seconds, 3600)
+		m = rem // 60
+		return " ".join(filter(None, [unit(h, "hour"), unit(m, "minute") if m else None]))
+
+	days = seconds // 86400
+	if days < 365:
+		return unit(days, "day")
+	years, rem_days = divmod(days, 365)
+	months = rem_days // 30
+	return " ".join(filter(None, [unit(years, "year"), unit(months, "month") if months else None]))
 
 
 async def get_cfg(guild_id):
@@ -98,7 +127,7 @@ async def on_leave(member):
 	if not cfg:
 		return
 	if member.joined_at:
-		duration = seconds_to_str(int((datetime.now(timezone.utc) - member.joined_at).total_seconds()))
+		duration = _humanize_duration((datetime.now(timezone.utc) - member.joined_at).total_seconds())
 	else:
 		duration = "an unknown amount of time"
 	text = _safe_format(
