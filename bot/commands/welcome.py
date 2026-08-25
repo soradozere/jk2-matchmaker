@@ -1,6 +1,6 @@
-__all__ = ['set_welcome_channel', 'set_welcome_message', 'set_leave_message', 'welcome_preview']
+__all__ = ['set_welcome_channel', 'set_welcome_message', 'set_leave_message', 'welcome_preview', 'welcome_config']
 
-from nextcord import TextChannel
+from nextcord import TextChannel, Embed, Colour
 
 from core.utils import find
 
@@ -41,3 +41,30 @@ async def welcome_preview(ctx):
 	ctx.check_perms(ctx.Perms.ADMIN)
 	await bot.welcome.on_join(ctx.author)
 	await bot.welcome.on_leave(ctx.author)
+
+
+async def welcome_config(ctx):
+	""" Shows the current welcome/leave setup — channel and message templates
+		(raw, with placeholders, not the rendered text — use =welcome_preview
+		for that) — since =set_welcome_* only ever writes, never shows. """
+	ctx.check_perms(ctx.Perms.ADMIN)
+	cfg = await bot.welcome.get_cfg(ctx.channel.guild.id)
+	channel = ctx.channel.guild.get_channel(cfg['channel_id']) if cfg and cfg['channel_id'] else None
+
+	embed = Embed(title="Welcome/leave configuration", colour=Colour(0x7289DA))
+	embed.add_field(
+		name="Channel",
+		value=channel.mention if channel else f"*not set — run `{ctx.qc.cfg.prefix}set_welcome_channel #channel`*",
+		inline=False
+	)
+	embed.add_field(
+		name="Welcome message",
+		value=(cfg and cfg['welcome_message']) or f"*(default)*\n{bot.welcome.DEFAULT_WELCOME_MESSAGE}",
+		inline=False
+	)
+	embed.add_field(
+		name="Leave message",
+		value=(cfg and cfg['leave_message']) or f"*(default)*\n{bot.welcome.DEFAULT_LEAVE_MESSAGE}",
+		inline=False
+	)
+	await ctx.reply(embed=embed)
