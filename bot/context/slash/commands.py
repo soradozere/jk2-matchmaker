@@ -774,6 +774,46 @@ async def _cointoss(
 ): await run_slash(bot.commands.cointoss, interaction=interaction, side=side)
 
 
+@dc.slash_command(name='tz', description='Current time in major timezones around the world.', **guild_kwargs)
+async def _tz(
+		interaction: Interaction,
+): await run_slash(bot.commands.tz, interaction=interaction)
+
+
+@dc.slash_command(name='urban', description='Look up a term on Urban Dictionary.', **guild_kwargs)
+async def _urban(
+		interaction: Interaction,
+		term: str
+): await run_slash(bot.commands.urban, interaction=interaction, term=term)
+
+
+@dc.slash_command(name='set_welcome_channel', description='Admin: set the channel for welcome/leave messages.', **guild_kwargs)
+async def _set_welcome_channel(
+		interaction: Interaction,
+		channel: TextChannel
+): await run_slash(bot.commands.set_welcome_channel, interaction=interaction, channel=channel)
+
+
+@dc.slash_command(name='set_welcome_message', description='Admin: set the welcome message text.', **guild_kwargs)
+async def _set_welcome_message(
+		interaction: Interaction,
+		message: str
+): await run_slash(bot.commands.set_welcome_message, interaction=interaction, message=message)
+
+
+@dc.slash_command(name='set_leave_message', description='Admin: set the leave message text.', **guild_kwargs)
+async def _set_leave_message(
+		interaction: Interaction,
+		message: str
+): await run_slash(bot.commands.set_leave_message, interaction=interaction, message=message)
+
+
+@dc.slash_command(name='welcome_preview', description='Admin: preview the welcome/leave messages using yourself.', **guild_kwargs)
+async def _welcome_preview(
+		interaction: Interaction,
+): await run_slash(bot.commands.welcome_preview, interaction=interaction)
+
+
 @dc.slash_command(name='help', description='Show the everyday commands.', **guild_kwargs)
 async def _help(
 		interaction: Interaction,
