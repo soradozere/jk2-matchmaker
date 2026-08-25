@@ -5,14 +5,13 @@
 	back to the defaults below until then. Powers on_member_join/on_member_remove
 	in bot/events.py. """
 
-import string
 from datetime import datetime, timezone
 
 from nextcord import DiscordException
 
 from core.database import db
 from core.console import log
-from core.utils import get_nick
+from core.utils import get_nick, SafeTemplateDict
 
 import bot
 
@@ -43,17 +42,6 @@ db.ensure_table(dict(
 	],
 	primary_keys=["guild_id", "user_id"]
 ))
-
-
-class _SafeDict(dict):
-	""" Lets a stored template reference an unknown {placeholder} without crashing —
-		it's left in the output as-is instead of raising KeyError. """
-	def __missing__(self, key):
-		return "{" + key + "}"
-
-
-def _safe_format(template, **kwargs):
-	return string.Formatter().vformat(template, (), _SafeDict(**kwargs))
 
 
 def _humanize_duration(seconds):
@@ -143,10 +131,9 @@ async def on_join(member):
 	cfg = await get_cfg(member.guild.id)
 	if not cfg:
 		return
-	text = _safe_format(
-		cfg['welcome_message'] or DEFAULT_WELCOME_MESSAGE,
+	text = (cfg['welcome_message'] or DEFAULT_WELCOME_MESSAGE).format_map(SafeTemplateDict(
 		member=member.mention, guild=member.guild.name, site=bot.soracle.site_url()
-	)
+	))
 	await _post(member.guild, cfg['channel_id'], text)
 
 
@@ -165,9 +152,8 @@ async def on_leave(member, preview=False):
 		leave_count = (row['count'] if row else 0) + 1
 	else:
 		leave_count = await _increment_leave_count(member.guild.id, member.id)
-	text = _safe_format(
-		cfg['leave_message'] or DEFAULT_LEAVE_MESSAGE,
+	text = (cfg['leave_message'] or DEFAULT_LEAVE_MESSAGE).format_map(SafeTemplateDict(
 		name=get_nick(member), guild=member.guild.name, duration=duration,
 		leave_count=leave_count, leave_count_ordinal=_ordinal(leave_count)
-	)
+	))
 	await _post(member.guild, cfg['channel_id'], text)

@@ -163,6 +163,21 @@ async def _welcome_config(ctx: MessageContext, args: str = None):
 	await bot.commands.welcome_config(ctx)
 
 
+@message_command('set_youtube_channel')
+async def _set_youtube_channel(ctx: MessageContext, args: str = None):
+	await bot.commands.set_youtube_channel(ctx, channel_name=args)
+
+
+@message_command('set_youtube_enabled')
+async def _set_youtube_enabled(ctx: MessageContext, args: str = None):
+	await bot.commands.set_youtube_enabled(ctx, state=args)
+
+
+@message_command('youtube_config')
+async def _youtube_config(ctx: MessageContext, args: str = None):
+	await bot.commands.youtube_config(ctx)
+
+
 @message_command('urban')
 async def _urban(ctx: MessageContext, args: str = None):
 	await bot.commands.urban(ctx, term=args)
