@@ -58,6 +58,14 @@ def format_channel(string, guild):
 	return '<#{}>'.format(channel.id) if channel else None
 
 
+def resolve_channel(guild, arg):
+	""" A `<#id>` mention (from message-command text, no native channel type to
+		parse it for us) or a bare/#-prefixed channel name -> TextChannel or None. """
+	if arg.startswith('<#') and arg.endswith('>'):
+		return guild.get_channel(int(arg[2:-1]))
+	return find(lambda c: c.name.lower() == arg.lstrip('#').lower(), guild.text_channels)
+
+
 def format_role(string, guild):
 	role = get(guild.roles, name=string)
 	return '<@&{}>'.format(role.id) if role else None
