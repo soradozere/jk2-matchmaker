@@ -16,6 +16,7 @@ from . import jk2_servers
 from . import wrapped
 from . import urban
 from . import welcome
+from . import youtube
 from .context import Context, SlashContext, SystemContext
 from . import commands
 

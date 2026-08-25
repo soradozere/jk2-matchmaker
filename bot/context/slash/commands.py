@@ -814,6 +814,32 @@ async def _welcome_preview(
 ): await run_slash(bot.commands.welcome_preview, interaction=interaction)
 
 
+@dc.slash_command(name='welcome_config', description='Admin: show the current welcome/leave channel and message templates.', **guild_kwargs)
+async def _welcome_config(
+		interaction: Interaction,
+): await run_slash(bot.commands.welcome_config, interaction=interaction)
+
+
+@dc.slash_command(name='set_youtube_channel', description='Admin: set the channel for new JK2 CTF YouTube upload announcements.', **guild_kwargs)
+async def _set_youtube_channel(
+		interaction: Interaction,
+		channel: TextChannel
+): await run_slash(bot.commands.set_youtube_channel, interaction=interaction, channel=channel)
+
+
+@dc.slash_command(name='set_youtube_enabled', description='Admin: turn JK2 CTF YouTube upload announcements on or off.', **guild_kwargs)
+async def _set_youtube_enabled(
+		interaction: Interaction,
+		enabled: bool
+): await run_slash(bot.commands.set_youtube_enabled, interaction=interaction, state=enabled)
+
+
+@dc.slash_command(name='youtube_config', description='Admin: show the current YouTube upload watcher setup.', **guild_kwargs)
+async def _youtube_config(
+		interaction: Interaction,
+): await run_slash(bot.commands.youtube_config, interaction=interaction)
+
+
 @dc.slash_command(name='help', description='Show the everyday commands.', **guild_kwargs)
 async def _help(
 		interaction: Interaction,
