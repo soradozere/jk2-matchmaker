@@ -158,6 +158,11 @@ async def _welcome_preview(ctx: MessageContext, args: str = None):
 	await bot.commands.welcome_preview(ctx)
 
 
+@message_command('welcome_config')
+async def _welcome_config(ctx: MessageContext, args: str = None):
+	await bot.commands.welcome_config(ctx)
+
+
 @message_command('urban')
 async def _urban(ctx: MessageContext, args: str = None):
 	await bot.commands.urban(ctx, term=args)

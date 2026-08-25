@@ -814,6 +814,12 @@ async def _welcome_preview(
 ): await run_slash(bot.commands.welcome_preview, interaction=interaction)
 
 
+@dc.slash_command(name='welcome_config', description='Admin: show the current welcome/leave channel and message templates.', **guild_kwargs)
+async def _welcome_config(
+		interaction: Interaction,
+): await run_slash(bot.commands.welcome_config, interaction=interaction)
+
+
 @dc.slash_command(name='help', description='Show the everyday commands.', **guild_kwargs)
 async def _help(
 		interaction: Interaction,
