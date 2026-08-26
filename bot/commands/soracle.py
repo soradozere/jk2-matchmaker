@@ -15,6 +15,7 @@ from urllib.parse import quote
 from nextcord import Member, Embed, Colour
 
 from core.utils import find, get_nick
+from core.console import log
 
 import bot
 from bot import soracle
@@ -112,7 +113,31 @@ async def dbs_leaderboard(ctx):
 
 
 async def dfa_leaderboard(ctx):
-	await _stat_leaderboard(ctx, 'dfa_kills', "Top DFA killers")
+	# Three boards for the price of one, same idea as =dbs: kills, attempts, and
+	# kills specifically on the flag carrier ("returns"). A board whose stat
+	# Soracle doesn't recognize is skipped rather than failing the whole
+	# command — dfa_kills alone (the one that's always worked) is still useful.
+	boards, month = [], "this month"
+	for stat, label, emoji in (
+		('dfa_kills', "Top DFA killers", "🗡️"),
+		('dfa_attempts', "Top DFA attempts", "🎯"),
+		('dfa_returns', "Top DFA return kills", "🚩"),
+	):
+		try:
+			data = await soracle.fetch_stat_leaderboard(stat)
+		except bot.soracle.SoracleError as e:
+			log.debug(f"DFA leaderboard: stat '{stat}' unavailable ({e}), skipping its board.")
+			continue
+		month = data.get('month', month)
+		boards.append((f"{emoji} {label}", _board_lines(ctx, data.get('top'))))
+
+	if not boards:
+		raise bot.Exc.NotFoundError(ctx.qc.gt("Could not fetch DFA stats."))
+
+	embed = Embed(title=f"DFA leaderboards — {month}", colour=Colour(0x50e3c2), url=SITE_URL)
+	for name, value in boards:
+		embed.add_field(name=name, value=value, inline=False)
+	await ctx.reply(embed=embed)
 
 
 async def grabs_leaderboard(ctx):
