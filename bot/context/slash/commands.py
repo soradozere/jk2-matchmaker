@@ -608,7 +608,7 @@ async def _dbs(
 ): await run_slash(bot.commands.dbs_leaderboard, interaction=interaction)
 
 
-@soracle_slash(name='dfa', description='Top 5 DFA killers this month.', **guild_kwargs)
+@soracle_slash(name='dfa', description='Top DFA killers, attempts, and returns this month.', **guild_kwargs)
 async def _dfa(
 		interaction: Interaction,
 ): await run_slash(bot.commands.dfa_leaderboard, interaction=interaction)
