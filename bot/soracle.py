@@ -4,6 +4,7 @@
 
 import asyncio
 import aiohttp
+from urllib.parse import quote
 
 from core.config import cfg
 
@@ -190,6 +191,35 @@ async def fetch_last_match(discord_id=None):
 
 def _month_qs(year, month):
 	return f"?year={year}&month={month}" if year and month else ""
+
+
+async def fetch_tier_changelog(since=None):
+	""" Tier changes since a given ISO timestamp, oldest first, capped at 500 rows:
+		dict(changes=[{discordId, name, oldTier, newTier, at, source}]).
+		Omit `since` for full history (only safe to do once, to baseline a cursor --
+		don't announce results from an unbounded call, it'll include real past
+		history). discordId can be None for an unlinked player -- still a real
+		change, worth announcing by name without a mention. source is "calibrator"
+		or "admin". """
+	qs = f"?since={quote(since)}" if since else ""
+	status, data = await _request('GET', "/api/bot/tier-changelog" + qs)
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
+async def fetch_title_changelog(since=None):
+	""" Equipped-title changes since a given ISO timestamp, oldest first, capped at
+		500 rows: dict(changes=[{discordId, name, oldTitle, newTitle, rarity, at}]).
+		Same unbounded-`since` caveat as fetch_tier_changelog. oldTitle=None means
+		this is their first title ever; newTitle=None (and rarity=None) means they
+		unequipped -- both are meaningful nulls, not missing data. discordId can be
+		None the same way as the tier changelog. """
+	qs = f"?since={quote(since)}" if since else ""
+	status, data = await _request('GET', "/api/bot/title-changelog" + qs)
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
 
 
 async def fetch_monthly_report(year=None, month=None):

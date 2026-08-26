@@ -17,6 +17,7 @@ from . import wrapped
 from . import urban
 from . import welcome
 from . import youtube
+from . import levelup
 from .context import Context, SlashContext, SystemContext
 from . import commands
 

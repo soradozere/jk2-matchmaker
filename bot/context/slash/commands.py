@@ -840,6 +840,26 @@ async def _youtube_config(
 ): await run_slash(bot.commands.youtube_config, interaction=interaction)
 
 
+@dc.slash_command(name='set_levelup_channel', description='Admin: set the channel for tier/title level-up announcements.', **guild_kwargs)
+async def _set_levelup_channel(
+		interaction: Interaction,
+		channel: TextChannel
+): await run_slash(bot.commands.set_levelup_channel, interaction=interaction, channel=channel)
+
+
+@dc.slash_command(name='set_levelup_enabled', description='Admin: turn tier/title level-up announcements on or off.', **guild_kwargs)
+async def _set_levelup_enabled(
+		interaction: Interaction,
+		enabled: bool
+): await run_slash(bot.commands.set_levelup_enabled, interaction=interaction, state=enabled)
+
+
+@dc.slash_command(name='levelup_config', description='Admin: show the current tier/title level-up watcher setup.', **guild_kwargs)
+async def _levelup_config(
+		interaction: Interaction,
+): await run_slash(bot.commands.levelup_config, interaction=interaction)
+
+
 @dc.slash_command(name='help', description='Show the everyday commands.', **guild_kwargs)
 async def _help(
 		interaction: Interaction,
