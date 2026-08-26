@@ -8,3 +8,4 @@ from .soracle import *
 from .pug import *
 from .welcome import *
 from .youtube import *
+from .levelup import *

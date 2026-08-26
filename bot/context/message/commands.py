@@ -178,6 +178,21 @@ async def _youtube_config(ctx: MessageContext, args: str = None):
 	await bot.commands.youtube_config(ctx)
 
 
+@message_command('set_levelup_channel')
+async def _set_levelup_channel(ctx: MessageContext, args: str = None):
+	await bot.commands.set_levelup_channel(ctx, channel_name=args)
+
+
+@message_command('set_levelup_enabled')
+async def _set_levelup_enabled(ctx: MessageContext, args: str = None):
+	await bot.commands.set_levelup_enabled(ctx, state=args)
+
+
+@message_command('levelup_config')
+async def _levelup_config(ctx: MessageContext, args: str = None):
+	await bot.commands.levelup_config(ctx)
+
+
 @message_command('urban')
 async def _urban(ctx: MessageContext, args: str = None):
 	await bot.commands.urban(ctx, term=args)
