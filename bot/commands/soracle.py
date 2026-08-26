@@ -15,7 +15,6 @@ from urllib.parse import quote
 from nextcord import Member, Embed, Colour
 
 from core.utils import find, get_nick
-from core.console import log
 
 import bot
 from bot import soracle
@@ -85,6 +84,19 @@ def _board_lines(ctx, top, unit=""):
 	)
 
 
+def _kills_with_attempts_lines(ctx, top):
+	""" Like _board_lines, but appends each row's companion count — the attempts
+		behind the kills, so the board reads as a hit rate rather than a raw
+		total. Falls back to "?" on an older Soracle deploy that doesn't send
+		`companion` yet, rather than dropping the board. """
+	if not top:
+		return ctx.qc.gt("Nothing recorded this month yet.")
+	return "\n".join(
+		f"**{n + 1}.** {r['name']} — **{r['value']}** (attempts: {r.get('companion', '?')})"
+		for n, r in enumerate(top)
+	)
+
+
 async def _stat_leaderboard(ctx, stat, title, unit="", all_time=False):
 	""" Simple top-5-by-summed-stat board (=dfa, =grabs, ...). """
 	try:
@@ -113,30 +125,24 @@ async def dbs_leaderboard(ctx):
 
 
 async def dfa_leaderboard(ctx):
-	# Three boards for the price of one, same idea as =dbs: kills, attempts, and
-	# kills specifically on the flag carrier ("returns"). A board whose stat
-	# Soracle doesn't recognize is skipped rather than failing the whole
-	# command — dfa_kills alone (the one that's always worked) is still useful.
-	boards, month = [], "this month"
-	for stat, label, emoji in (
-		('dfa_kills', "Top DFA killers", "🗡️"),
-		('dfa_attempts', "Top DFA attempts", "🎯"),
-		('dfa_returns', "Top DFA return kills", "🚩"),
-	):
-		try:
-			data = await soracle.fetch_stat_leaderboard(stat)
-		except bot.soracle.SoracleError as e:
-			log.debug(f"DFA leaderboard: stat '{stat}' unavailable ({e}), skipping its board.")
-			continue
-		month = data.get('month', month)
-		boards.append((f"{emoji} {label}", _board_lines(ctx, data.get('top'))))
+	# Same two-board shape as =dbs: most DFA kills, and most DFA *return* kills
+	# (killing the enemy flag carrier with a DFA). Both summed over the month.
+	#
+	# Attempts ride along on the kills board rather than getting a board of their
+	# own: ranking by raw attempts just crowns whoever spammed DFA the most, which
+	# says nothing about skill. Beside the kill count it's the useful half of a
+	# hit rate ("897, from 4664 attempts"), which is the number people actually
+	# want. Soracle sends it as each row's `companion` — see COMPANION_STATS in
+	# app/api/bot/leaderboard/[stat]/route.ts over there.
+	try:
+		kills = await soracle.fetch_stat_leaderboard('dfa_kills')
+		returns = await soracle.fetch_stat_leaderboard('dfa_returns')
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
 
-	if not boards:
-		raise bot.Exc.NotFoundError(ctx.qc.gt("Could not fetch DFA stats."))
-
-	embed = Embed(title=f"DFA leaderboards — {month}", colour=Colour(0x50e3c2), url=SITE_URL)
-	for name, value in boards:
-		embed.add_field(name=name, value=value, inline=False)
+	embed = Embed(title=f"DFA leaderboards — {kills.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
+	embed.add_field(name="🗡️ Top DFA killers", value=_kills_with_attempts_lines(ctx, kills.get('top')), inline=False)
+	embed.add_field(name="🚩 Top DFA return kills", value=_board_lines(ctx, returns.get('top')), inline=False)
 	await ctx.reply(embed=embed)
 
 
