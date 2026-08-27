@@ -30,16 +30,6 @@ class Embeds:
 			return f'`{self.m.rank_str(p)}`{p.mention}'
 		return p.mention
 
-	def _ranked_display(self, p: Member, name: str):
-		""" Like _ranked_nick, but with a caller-supplied display name — used to show the
-			name Soracle has on record (the balancer site's name) instead of the Discord
-			nickname, when a balance option is available to read it from. """
-		if self.m.ranked:
-			if self.m.qc.cfg.emoji_ranks:
-				return f'{self.m.rank_str(p)}`{name}`'
-			return f'`{self.m.rank_str(p)}{name}`'
-		return f'`{name}`'
-
 	def _team_avg_rating(self, team):
 		return sum((self.m.ratings[p.id] for p in team)) // (len(team) or 1)
 
@@ -197,18 +187,29 @@ class Embeds:
 				# for each player where Soracle has it, instead of whatever their Discord nick is.
 				result = option.get('result') or {}
 				tier_mic_keys = (('redTierTotal', 'redMic'), ('blueTierTotal', 'blueMic'))
-				soracle_names = {}
-				for ids_key, names_key in (('teamRedDiscordIds', 'teamRed'), ('teamBlueDiscordIds', 'teamBlue')):
-					ids, names = option.get(ids_key) or [], result.get(names_key) or []
+				soracle_names, soracle_tiers = {}, {}
+				for ids_key, names_key, tiers_key in (
+					('teamRedDiscordIds', 'teamRed', 'redTiers'), ('teamBlueDiscordIds', 'teamBlue', 'blueTiers')
+				):
+					ids = option.get(ids_key) or []
+					names, tiers = result.get(names_key) or [], result.get(tiers_key) or []
 					soracle_names.update({int(i): names[n] for n, i in enumerate(ids) if i and n < len(names)})
+					soracle_tiers.update({int(i): tiers[n] for n, i in enumerate(ids) if i and n < len(tiers)})
 				for t, (tier_key, mic_key) in zip(self.m.teams[:2], tier_mic_keys):
 					name = f"{t.emoji} {t.name.upper()}"
 					if self.m.ranked:
 						name += f" ​ `〈{self._team_avg_rating(t)}〉`"
 					name += f" ​ `〈tier {result.get(tier_key, '?')}〉` 🎤{result.get(mic_key, '?')}"
+					# Sort by each player's individual Soracle tier when the balance API
+					# provides it; fall back to the bot's own Elo rating otherwise (older
+					# Soracle deploys / mixed units would make a combined sort meaningless).
+					if all(p.id in soracle_tiers for p in t):
+						ranked_team = sorted(t, key=lambda p: soracle_tiers[p.id], reverse=True)
+					else:
+						ranked_team = sorted(t, key=lambda p: self.m.ratings[p.id], reverse=True)
 					roster = "\n".join(
-						"`{n}` {label}".format(n=n + 1, label=self._ranked_display(p, soracle_names.get(p.id) or get_nick(p)))
-						for n, p in enumerate(t)
+						"`{n}` `{label}`".format(n=n + 1, label=soracle_names.get(p.id) or get_nick(p))
+						for n, p in enumerate(ranked_team)
 					) or self.m.gt("empty")
 					embed.add_field(name=name, value=roster, inline=True)
 			else:
