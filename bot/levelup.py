@@ -61,8 +61,10 @@ def _who(name, discord_id):
 
 def _build_message(entry):
 	parts = []
+	tier_dropped = False
 	if 'tier' in entry:
 		old, new = entry['tier']
+		tier_dropped = new < old
 		parts.append(f"moved from Tier {old} to Tier {new}")
 	if 'title' in entry:
 		old_title, new_title, rarity = entry['title']
@@ -70,7 +72,14 @@ def _build_message(entry):
 		if rarity:
 			bit += f" ({rarity})"
 		parts.append(bit)
-	return f"🎉 {_who(entry['name'], entry['discord_id'])} " + " and ".join(parts) + "!"
+
+	# A bare tier drop isn't something to celebrate -- only skip the party icon
+	# when there's no title change to offset it (a title is always a gain,
+	# since _merge_title_changes already filters out unequips).
+	celebratory = 'title' in entry or not tier_dropped
+	icon = "🎉" if celebratory else "📉"
+	punctuation = "!" if celebratory else "."
+	return f"{icon} {_who(entry['name'], entry['discord_id'])} " + " and ".join(parts) + punctuation
 
 
 async def think(frame_time):
