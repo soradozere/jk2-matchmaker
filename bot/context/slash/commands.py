@@ -626,7 +626,7 @@ async def _deaths(
 ): await run_slash(bot.commands.deaths_leaderboard, interaction=interaction)
 
 
-@soracle_slash(name='caps', description='Top 5 best cap conversion since tracking began.', **guild_kwargs)
+@soracle_slash(name='caps', description='Top 5 best cap conversion this month.', **guild_kwargs)
 async def _caps(
 		interaction: Interaction,
 ): await run_slash(bot.commands.caps_leaderboard, interaction=interaction)
