@@ -640,16 +640,16 @@ async def caps_leaderboard(ctx):
 	# /kill resets (how support hands the flag to a runner) resolve neither way
 	# and are ignored, instead of counting against you as they did under grabs.
 	#
-	# Ordering and the qualifying floor are the site's, computed once in
-	# lib/cap-conversion.ts so Discord and the web page can't disagree.
+	# Monthly board, rolling over with the rest of the stats. Ordering and the
+	# qualifying floor are the site's, computed once in lib/cap-conversion.ts so
+	# Discord and the web page can't disagree.
 	try:
 		data = await soracle.fetch_cap_conversion()
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 
 	top = (data.get('top') or [])[:5]
-	window = data.get('window') or "since tracking began"
-	embed = Embed(title=f"Best cap conversions — {window}", colour=Colour(0x50e3c2), url=SITE_URL)
+	embed = Embed(title=f"Best cap conversions — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("Not enough capping data yet.")
 	else:
@@ -660,9 +660,10 @@ async def caps_leaderboard(ctx):
 			) for i, p in enumerate(top)
 		)
 		# The footer is load-bearing: without it the percentage looks like it
-		# covers every game ever played, and it covers a handful.
-		embed.set_footer(text="A run counts once it ends in a cap or a return. Since 9 Aug · {m} matches tracked · min {f} runs".format(
-			m=data.get('matchCount', 0), f=data.get('carryFloor', 0)
+		# covers every game ever played, and early in a month it covers a handful.
+		m = data.get('matchCount', 0)
+		embed.set_footer(text="A run counts once it ends in a cap or a return. {m} match{es} tracked this month · min {f} runs".format(
+			m=m, es='' if m == 1 else 'es', f=data.get('carryFloor', 0)
 		))
 	await ctx.reply(embed=embed)
 
