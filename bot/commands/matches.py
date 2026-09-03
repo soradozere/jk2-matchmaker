@@ -4,7 +4,7 @@ __all__ = [
 	'rebalance', 'manual', 'remove_match_player', 'force_start_match'
 ]
 
-from nextcord import Member
+from nextcord import Member, DiscordException
 from typing import List
 from functools import wraps
 
@@ -35,7 +35,16 @@ async def show_matches(ctx):
 async def show_teams(ctx, match: bot.Match):
 	if match.state not in [bot.Match.DRAFT, bot.Match.WAITING_REPORT]:
 		raise bot.Exc.MatchStateError('Match must be on draft or waiting report state.')
-	await match.draft.print(ctx)
+	if match.state == bot.Match.WAITING_REPORT:
+		# Teams are locked in past this point -- show the same styled roster the
+		# "has started" post used, not the draft-stage embed (=teams was reverting
+		# to the old plain-nick style after the bot had already picked).
+		try:
+			await ctx.notice(embed=match.embeds.final_message())
+		except DiscordException:
+			pass
+	else:
+		await match.draft.print(ctx)
 
 
 @author_match
