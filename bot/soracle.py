@@ -276,6 +276,21 @@ async def fetch_returner_rate():
 	return data
 
 
+async def fetch_tiers(discord_ids):
+	""" Batched tier lookup for a group of players: dict(int(discord_id) -> tier).
+		A discord_id that isn't linked to a Soracle player is simply absent from
+		the result, not an error -- callers should treat a missing id as
+		tier-unknown. Used for tier-based captain selection, where fetching each
+		player's tier individually (fetch_player, one call each) would mean N
+		round trips right when a queue fills. """
+	status, data = await _request(
+		'POST', "/api/bot/tiers", json_body=dict(discordIds=[str(i) for i in discord_ids])
+	)
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return {int(k): v for k, v in (data.get('tiers') or {}).items()}
+
+
 async def fetch_balance(discord_ids):
 	""" Returns the list of balance options for exactly 12 discord ids.
 		Each option carries result.teamRed/teamBlue (names), tier totals, mic counts
