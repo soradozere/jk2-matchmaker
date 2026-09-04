@@ -133,6 +133,11 @@ async def _teams(ctx: MessageContext, args: str = None):
 	await bot.commands.show_teams(ctx)
 
 
+@message_command('combos')
+async def _combos(ctx: MessageContext, args: str = None):
+	await bot.commands.show_captain_combos(ctx)
+
+
 @message_command('tz')
 async def _tz(ctx: MessageContext, args: str = None):
 	await bot.commands.tz(ctx)

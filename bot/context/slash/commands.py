@@ -493,6 +493,12 @@ async def _teams(
 ): await run_slash(bot.commands.show_teams, interaction=interaction)
 
 
+@dc.slash_command(name='combos', description='Show the pre-agreed captain pairings.', **guild_kwargs)
+async def _combos(
+		interaction: Interaction
+): await run_slash(bot.commands.show_captain_combos, interaction=interaction)
+
+
 @dc.slash_command(name='subme', description='Request a substitute', **guild_kwargs)
 async def _sub_me(
 		interaction: Interaction

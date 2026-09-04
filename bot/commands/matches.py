@@ -1,10 +1,10 @@
 __all__ = [
 	'show_matches', 'show_teams', 'set_ready', 'sub_me', 'sub_for', 'put',
 	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual',
-	'rebalance', 'manual', 'remove_match_player', 'force_start_match'
+	'rebalance', 'manual', 'remove_match_player', 'force_start_match', 'show_captain_combos'
 ]
 
-from nextcord import Member, DiscordException
+from nextcord import Member, DiscordException, Embed, Colour
 from typing import List
 from functools import wraps
 
@@ -12,6 +12,7 @@ from core.utils import get, find
 
 import bot
 from bot import soracle
+from bot import captain_combos
 
 
 def author_match(coro):
@@ -45,6 +46,36 @@ async def show_teams(ctx, match: bot.Match):
 			pass
 	else:
 		await match.draft.print(ctx)
+
+
+async def show_captain_combos(ctx):
+	""" Reference list for the "captain combos" pick_captains mode -- doesn't
+		need an active match, just prints what's in captain_combos.py so admins/
+		players can check it without digging up the source file. """
+	perfect = [(a, b) for a, b, is_perfect, _ in captain_combos.COMBOS if is_perfect]
+	conditional = [(a, b, fp) for a, b, is_perfect, fp in captain_combos.COMBOS if not is_perfect]
+
+	embed = Embed(
+		title="Captain combos",
+		colour=Colour(0x50e3c2),
+		description=(
+			"Used when `pick_captains` is set to `captain combos`. **Perfect Match** pairs are "
+			"tried first (random pick if several fit, random first pick between the two). "
+			"**Conditional** pairs are only used when no Perfect Match is available in the queue, "
+			"and the named player gets first pick."
+		)
+	)
+	embed.add_field(
+		name=f"⚖️ Perfect Match ({len(perfect)})",
+		value="\n".join(f"{a} vs {b}" for a, b in perfect) or ctx.qc.gt("None set."),
+		inline=False
+	)
+	embed.add_field(
+		name=f"🎯 Conditional ({len(conditional)})",
+		value="\n".join(f"{a} vs {b} — **{fp}** gets first pick" for a, b, fp in conditional) or ctx.qc.gt("None set."),
+		inline=False
+	)
+	await ctx.reply(embed=embed)
 
 
 @author_match
