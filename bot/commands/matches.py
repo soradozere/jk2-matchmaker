@@ -49,32 +49,45 @@ async def show_teams(ctx, match: bot.Match):
 
 
 async def show_captain_combos(ctx):
-	""" Reference list for the "captain combos" pick_captains mode -- doesn't
-		need an active match, just prints what's in captain_combos.py so admins/
-		players can check it without digging up the source file. Slash-only and
-		ephemeral (only the requester sees it) so it can't spam the channel --
-		same pattern as other private-reply commands. """
-	perfect = [(a, b) for a, b, is_perfect, _ in captain_combos.COMBOS if is_perfect]
-	conditional = [(a, b, fp) for a, b, is_perfect, fp in captain_combos.COMBOS if not is_perfect]
+	""" Shows which captain combos are actually possible for who's in queue
+		right now -- not the whole reference list. Requires at least one queue
+		on the channel to have players added; pulls Soracle names for everyone
+		currently added across active queues on the channel. Slash-only and
+		ephemeral (only the requester sees it) so it can't spam the channel. """
+	active_queues = [q for q in ctx.qc.queues if len(q.queue)]
+	pool_players = {p.id: p for q in active_queues for p in q.queue}
+	if not pool_players:
+		raise bot.Exc.NotFoundError(
+			ctx.qc.gt("Nobody's queued right now -- combos are shown based on who's currently added.")
+		)
+
+	try:
+		summaries = await soracle.fetch_player_summaries(pool_players.keys())
+	except soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	pool_names = {i: s['name'] for i, s in summaries.items() if s.get('name')}
+
+	perfect, conditional = captain_combos.possible_pairs(pool_names)
 
 	embed = Embed(
-		title="Captain combos",
+		title="Captain combos — right now",
 		colour=Colour(0x50e3c2),
 		description=(
-			"Used when `pick_captains` is set to `captain combos`. **Perfect Match** pairs are "
-			"tried first (random pick if several fit, random first pick between the two). "
-			"**Conditional** pairs are only used when no Perfect Match is available in the queue, "
-			"and the named player gets first pick."
+			"Only pairs where **both** players are currently in queue. Perfect Match is tried "
+			"first (random pick if several fit); Conditional only kicks in if no Perfect Match "
+			"is available, and the named player gets first pick."
 		)
 	)
 	embed.add_field(
 		name=f"⚖️ Perfect Match ({len(perfect)})",
-		value="\n".join(f"{a} vs {b}" for a, b in perfect) or ctx.qc.gt("None set."),
+		value="\n".join(f"{name_a} vs {name_b}" for _, _, name_a, name_b, _ in perfect)
+		or ctx.qc.gt("None possible right now."),
 		inline=False
 	)
 	embed.add_field(
 		name=f"🎯 Conditional ({len(conditional)})",
-		value="\n".join(f"{a} vs {b} — **{fp}** gets first pick" for a, b, fp in conditional) or ctx.qc.gt("None set."),
+		value="\n".join(f"{name_a} vs {name_b} — **{fp}** gets first pick" for _, _, name_a, name_b, fp in conditional)
+		or ctx.qc.gt("None possible right now."),
 		inline=False
 	)
 	await ctx.reply(embed=embed, ephemeral=True)
