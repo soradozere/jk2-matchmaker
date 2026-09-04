@@ -5,6 +5,7 @@ import random
 from nextcord import DiscordException
 
 import bot
+from bot import soracle
 from core.utils import find, get, iter_to_dict, join_and, get_nick
 from core.console import log
 from core.client import dc
@@ -62,8 +63,14 @@ class Match:
 	async def new(cls, ctx, queue, players, **kwargs):
 		# Create the Match object
 		ratings = {p['user_id']: p['rating'] for p in await ctx.qc.rating.get_players((p.id for p in players))}
+		tiers = {}
+		if kwargs.get('pick_captains') == "fair pairs by tier" and soracle.enabled():
+			try:
+				tiers = await soracle.fetch_tiers(p.id for p in players)
+			except soracle.SoracleError as e:
+				log.error(f"Match.new: couldn't fetch Soracle tiers for captain selection, falling back to Elo: {e}")
 		match_id = await bot.stats.next_match()
-		match = cls(match_id, queue, ctx.qc, players, ratings, **kwargs)
+		match = cls(match_id, queue, ctx.qc, players, ratings, tiers=tiers, **kwargs)
 		# Prepare the Match object
 		match.maps = match.random_maps(match.cfg['maps'], match.cfg['map_count'], queue.last_maps)
 		match.init_captains(match.cfg['pick_captains'], match.cfg['captains_role_id'])
@@ -142,7 +149,7 @@ class Match:
 
 		bot.active_matches.append(match)
 
-	def __init__(self, match_id, queue, qc, players, ratings, **cfg):
+	def __init__(self, match_id, queue, qc, players, ratings, tiers=None, **cfg):
 
 		# Set parent objects and shorthands
 		self.queue = queue
@@ -159,6 +166,7 @@ class Match:
 		self.ranked = self.cfg['ranked'] and self.cfg['pick_teams'] != 'no teams'
 		self.players = list(players)
 		self.ratings = ratings
+		self.tiers = tiers or {}
 		self.winner = None
 		self.scores = [0, 0]
 
@@ -215,6 +223,16 @@ class Match:
 			self.captains = self.sort_players(pool)[:2]
 		elif pick_captains == "fair pairs":
 			candidates = sorted(pool, key=lambda p: [self.ratings[p.id]], reverse=True)
+			i = random.randrange(len(candidates) - 1)
+			self.captains = [candidates[i], candidates[i + 1]]
+		elif pick_captains == "fair pairs by tier":
+			# Same idea as "fair pairs", but skill is Soracle's tier instead of the
+			# bot's own community Elo. Falls back to Elo if tier data didn't come
+			# through for everyone in the pool (Soracle unreachable, or Match.new
+			# couldn't fetch it) -- mixing known tiers with an Elo placeholder for
+			# the rest would make the "closest pair" comparison meaningless.
+			key = self.tiers if all(p.id in self.tiers for p in pool) else self.ratings
+			candidates = sorted(pool, key=lambda p: key[p.id], reverse=True)
 			i = random.randrange(len(candidates) - 1)
 			self.captains = [candidates[i], candidates[i + 1]]
 		elif pick_captains == "random":
