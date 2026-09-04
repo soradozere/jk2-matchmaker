@@ -122,34 +122,38 @@ def _norm(name):
 	return (name or "").strip().lower()
 
 
-def pick_pair(pool_names):
+def possible_pairs(pool_names):
 	""" pool_names: dict(discord_id -> soracle name) for everyone eligible to
 		captain in the current queue.
 
-		Returns [first_pick_id, second_pick_id], or None if nothing in COMBOS
+		Returns (perfect, conditional) -- each a list of every COMBOS entry
+		where both players are currently in pool_names, as
+		(pid_a, pid_b, name_a, name_b, first_pick) tuples. Used both to pick a
+		captain pair and to show what's actually available right now. """
+	by_name = {_norm(name): pid for pid, name in pool_names.items()}
+	perfect, conditional = [], []
+	for name_a, name_b, is_perfect, first_pick in COMBOS:
+		pid_a, pid_b = by_name.get(_norm(name_a)), by_name.get(_norm(name_b))
+		if pid_a is not None and pid_b is not None and pid_a != pid_b:
+			entry = (pid_a, pid_b, name_a, name_b, first_pick)
+			(perfect if is_perfect else conditional).append(entry)
+	return perfect, conditional
+
+
+def pick_pair(pool_names):
+	""" Returns [first_pick_id, second_pick_id], or None if nothing in COMBOS
 		matches two different people currently in the pool. Perfect Match pairs
 		are tried first; Conditional pairs are only considered if no Perfect
 		Match is available, per the source list. A tie among several equally-
 		eligible pairs breaks randomly. """
-	by_name = {_norm(name): pid for pid, name in pool_names.items()}
-
-	def matches(want_perfect):
-		found = []
-		for name_a, name_b, perfect, first_pick in COMBOS:
-			if perfect != want_perfect:
-				continue
-			pid_a, pid_b = by_name.get(_norm(name_a)), by_name.get(_norm(name_b))
-			if pid_a is not None and pid_b is not None and pid_a != pid_b:
-				found.append((pid_a, pid_b, first_pick))
-		return found
-
-	candidates = matches(True) or matches(False)
+	perfect, conditional = possible_pairs(pool_names)
+	candidates = perfect or conditional
 	if not candidates:
 		return None
 
-	pid_a, pid_b, first_pick = random.choice(candidates)
+	pid_a, pid_b, name_a, name_b, first_pick = random.choice(candidates)
 	if first_pick is None:
 		return random.sample([pid_a, pid_b], 2)
 
-	first_id = pid_a if _norm(first_pick) == _norm(pool_names[pid_a]) else pid_b
+	first_id = pid_a if _norm(first_pick) == _norm(name_a) else pid_b
 	return [first_id, pid_b if first_id == pid_a else pid_a]
