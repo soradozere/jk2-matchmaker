@@ -51,7 +51,9 @@ async def show_teams(ctx, match: bot.Match):
 async def show_captain_combos(ctx):
 	""" Reference list for the "captain combos" pick_captains mode -- doesn't
 		need an active match, just prints what's in captain_combos.py so admins/
-		players can check it without digging up the source file. """
+		players can check it without digging up the source file. Slash-only and
+		ephemeral (only the requester sees it) so it can't spam the channel --
+		same pattern as other private-reply commands. """
 	perfect = [(a, b) for a, b, is_perfect, _ in captain_combos.COMBOS if is_perfect]
 	conditional = [(a, b, fp) for a, b, is_perfect, fp in captain_combos.COMBOS if not is_perfect]
 
@@ -75,7 +77,7 @@ async def show_captain_combos(ctx):
 		value="\n".join(f"{a} vs {b} — **{fp}** gets first pick" for a, b, fp in conditional) or ctx.qc.gt("None set."),
 		inline=False
 	)
-	await ctx.reply(embed=embed)
+	await ctx.reply(embed=embed, ephemeral=True)
 
 
 @author_match
