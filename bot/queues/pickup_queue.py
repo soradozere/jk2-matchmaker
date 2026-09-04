@@ -114,7 +114,7 @@ class PickupQueue:
 				display="Pick captains",
 				section="Teams",
 				options=[
-					"by role and rating", "fair pairs", "fair pairs by tier",
+					"by role and rating", "fair pairs", "fair pairs by tier", "captain combos",
 					"random with role preference", "random", "no captains"
 				],
 				default="by role and rating",
@@ -123,6 +123,8 @@ class PickupQueue:
 					"  by role and rating - sort by captain role and rating and pick the best",
 					"  fair pairs - pick random pair of players with closest ratings to each other",
 					"  fair pairs by tier - same as fair pairs, but by Soracle tier instead of rating",
+					"  captain combos - use the community's pre-agreed captain pairings (see captain_combos.py); "
+					"falls back to fair pairs by tier if nobody in queue is on the list",
 					"  random with role preference - pick captains randomly with preference of the captain role",
 					"  random - pick captains randomly",
 					"  no captains - do not pick captains automatically"

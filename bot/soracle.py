@@ -277,19 +277,31 @@ async def fetch_returner_rate():
 	return data
 
 
-async def fetch_tiers(discord_ids):
-	""" Batched tier lookup for a group of players: dict(int(discord_id) -> tier).
-		A discord_id that isn't linked to a Soracle player is simply absent from
-		the result, not an error -- callers should treat a missing id as
-		tier-unknown. Used for tier-based captain selection, where fetching each
-		player's tier individually (fetch_player, one call each) would mean N
-		round trips right when a queue fills. """
+async def fetch_player_summaries(discord_ids):
+	""" Batched name+tier lookup for a group of players: dict(int(discord_id) ->
+		dict(name, tier)). A discord_id that isn't linked to a Soracle player is
+		simply absent from the result, not an error -- callers should treat a
+		missing id as unknown. Used wherever a whole queue's worth of players'
+		identity/skill is needed at once (captain selection): fetching each
+		player individually (fetch_player, one call each) would mean N round
+		trips right when a queue fills. """
 	status, data = await _request(
 		'POST', "/api/bot/tiers", json_body=dict(discordIds=[str(i) for i in discord_ids])
 	)
 	if status != 200 or data is None:
 		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
-	return {int(k): v for k, v in (data.get('tiers') or {}).items()}
+	tiers, names = data.get('tiers') or {}, data.get('names') or {}
+	return {
+		int(k): dict(name=names.get(k), tier=tiers.get(k))
+		for k in tiers.keys() | names.keys()
+	}
+
+
+async def fetch_tiers(discord_ids):
+	""" Batched tier-only lookup -- see fetch_player_summaries. Kept separate
+		since most callers (tier-based fair-pairs captains) only need the tier. """
+	summaries = await fetch_player_summaries(discord_ids)
+	return {i: s['tier'] for i, s in summaries.items() if s.get('tier') is not None}
 
 
 async def fetch_balance(discord_ids):
