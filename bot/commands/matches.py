@@ -52,8 +52,9 @@ async def show_captain_combos(ctx):
 	""" Shows which captain combos are actually possible for who's in queue
 		right now -- not the whole reference list. Requires at least one queue
 		on the channel to have players added; pulls Soracle names for everyone
-		currently added across active queues on the channel. Slash-only and
-		ephemeral (only the requester sees it) so it can't spam the channel. """
+		currently added across active queues on the channel. Available as both
+		=combos (public) and /combos (private/ephemeral) -- the live filtering
+		keeps the output short enough that =combos being public is fine. """
 	active_queues = [q for q in ctx.qc.queues if len(q.queue)]
 	pool_players = {p.id: p for q in active_queues for p in q.queue}
 	if not pool_players:
@@ -90,7 +91,12 @@ async def show_captain_combos(ctx):
 		or ctx.qc.gt("None possible right now."),
 		inline=False
 	)
-	await ctx.reply(embed=embed, ephemeral=True)
+	# ephemeral only means anything for a slash reply -- MessageContext.reply
+	# has no such concept (a plain Discord message can't be private).
+	if hasattr(ctx, 'interaction'):
+		await ctx.reply(embed=embed, ephemeral=True)
+	else:
+		await ctx.reply(embed=embed)
 
 
 @author_match

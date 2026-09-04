@@ -133,8 +133,9 @@ async def _teams(ctx: MessageContext, args: str = None):
 	await bot.commands.show_teams(ctx)
 
 
-# =combos was pulled -- /combos only (slash-only + ephemeral), so checking the
-# captain-combos list can't spam the channel. See show_captain_combos.
+@message_command('combos')
+async def _combos(ctx: MessageContext, args: str = None):
+	await bot.commands.show_captain_combos(ctx)
 
 
 @message_command('tz')
