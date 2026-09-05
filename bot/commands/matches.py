@@ -49,14 +49,19 @@ async def show_teams(ctx, match: bot.Match):
 
 
 async def show_captain_combos(ctx):
-	""" Shows which captain combos are actually possible for who's in queue
-		right now -- not the whole reference list. Requires at least one queue
-		on the channel to have players added; pulls Soracle names for everyone
-		currently added across active queues on the channel. Available as both
-		=combos (public) and /combos (private/ephemeral) -- the live filtering
-		keeps the output short enough that =combos being public is fine. """
-	active_queues = [q for q in ctx.qc.queues if len(q.queue)]
-	pool_players = {p.id: p for q in active_queues for p in q.queue}
+	""" Shows which captain combos are actually possible right now -- not the
+		whole reference list. This is most useful once a match has actually
+		formed (draft stage, deciding who should captain), at which point
+		everyone's already moved out of the queue and into the match -- so an
+		active match the author is in takes priority over the pre-fill queue,
+		which by then is empty anyway. Available as both =combos (public) and
+		/combos (private/ephemeral) -- the live filtering keeps the output
+		short enough that =combos being public is fine. """
+	if (match := find(lambda m: m.qc == ctx.qc and ctx.author in m.players, bot.active_matches)) is not None:
+		pool_players = {p.id: p for p in match.players}
+	else:
+		active_queues = [q for q in ctx.qc.queues if len(q.queue)]
+		pool_players = {p.id: p for q in active_queues for p in q.queue}
 	if not pool_players:
 		raise bot.Exc.NotFoundError(
 			ctx.qc.gt("Nobody's queued right now -- combos are shown based on who's currently added.")
