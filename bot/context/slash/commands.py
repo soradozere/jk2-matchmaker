@@ -668,6 +668,13 @@ async def _bc(
 ): await run_slash(bot.commands.bc_leaderboard, interaction=interaction)
 
 
+@soracle_slash(name='impact', description='Top 10 players by impact, all-time.', **guild_kwargs)
+async def _impact(
+		interaction: Interaction,
+		page: int = SlashOption(required=False, description="Page beyond the top 10 (2 = 11-20, 3 = 21-30, ...)"),
+): await run_slash(bot.commands.impact_leaderboard, interaction=interaction, page=page or 1)
+
+
 @soracle_slash(name='flaghold', description='Top 5 by flag hold time this month.', **guild_kwargs)
 async def _flaghold(
 		interaction: Interaction,

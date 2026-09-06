@@ -8,6 +8,7 @@ from core.utils import get, find, seconds_to_str, get_nick, discord_table
 from core.database import db
 
 import bot
+from bot import soracle
 
 
 async def last_game(ctx, queue: str = None, player: Member = None, match_id: int = None):
@@ -85,16 +86,51 @@ async def stats(ctx, player: Member = None):
 
 
 async def top(ctx, period=None):
+	canonical = None
 	if period in ["day", ctx.qc.gt("day")]:
-		time_gap = int(time()) - (60 * 60 * 24)
+		canonical = "day"
 	elif period in ["week", ctx.qc.gt("week")]:
-		time_gap = int(time()) - (60 * 60 * 24 * 7)
+		canonical = "week"
 	elif period in ["month", ctx.qc.gt("month")]:
-		time_gap = int(time()) - (60 * 60 * 24 * 30)
+		canonical = "month"
 	elif period in ["year", ctx.qc.gt("year")]:
-		time_gap = int(time()) - (60 * 60 * 24 * 365)
-	else:
-		time_gap = None
+		canonical = "year"
+
+	# Soracle's real match history (CSV-derived) instead of the bot's own local
+	# ranked-match log, which is much sparser -- e.g. /top year used to miss
+	# everything that happened before this month's leaderboard reset, since the
+	# bot only ever logged matches it personally reported the result of.
+	if soracle.enabled():
+		try:
+			data = await soracle.fetch_stat_leaderboard(
+				'matches_played', all_time=(canonical is None), period=canonical
+			)
+		except soracle.SoracleError as e:
+			raise bot.Exc.NotFoundError(str(e))
+
+		top_players = (data.get('top') or [])[:10]
+		embed = Embed(
+			title=ctx.qc.gt("Top 10 players — {window}").format(
+				window=data.get('month') or canonical or ctx.qc.gt("all time")
+			),
+			colour=Colour(0x50e3c2),
+			url=soracle.site_url()
+		)
+		if not top_players:
+			embed.description = ctx.qc.gt("Not enough games recorded yet.")
+		else:
+			for p in top_players:
+				embed.add_field(name=p['name'], value=str(p['value']), inline=True)
+		await ctx.reply(embed=embed)
+		return
+
+	# Soracle disabled -- fall back to the bot's own local match log.
+	time_gap = {
+		"day": int(time()) - (60 * 60 * 24),
+		"week": int(time()) - (60 * 60 * 24 * 7),
+		"month": int(time()) - (60 * 60 * 24 * 30),
+		"year": int(time()) - (60 * 60 * 24 * 365),
+	}.get(canonical)
 
 	data = await bot.stats.top(ctx.qc.id, time_gap=time_gap)
 	embed = Embed(

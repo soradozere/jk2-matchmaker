@@ -238,12 +238,20 @@ async def fetch_monthly_aggregates(year=None, month=None):
 	return data
 
 
-async def fetch_stat_leaderboard(stat, all_time=False):
+async def fetch_stat_leaderboard(stat, all_time=False, period=None):
 	""" Top players by a match-stat: dict(stat, label, month, top=[{name, value}]).
 		Defaults to the current month; all_time=True sums the whole history, for
 		stats too rare to fill a monthly board (see =doom). `month` comes back as
-		"all time" in that case, so the embed title reads correctly either way. """
-	suffix = "?range=all" if all_time else ""
+		"all time" in that case, so the embed title reads correctly either way.
+		period ("day"/"week"/"month"/"year") is an alternative window, used by
+		/top -- mutually exclusive with all_time in practice, but this just
+		forwards whichever query params are given. """
+	params = []
+	if all_time:
+		params.append("range=all")
+	if period:
+		params.append(f"period={period}")
+	suffix = ("?" + "&".join(params)) if params else ""
 	status, data = await _request('GET', f"/api/bot/leaderboard/{stat}{suffix}")
 	if status != 200 or data is None:
 		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")

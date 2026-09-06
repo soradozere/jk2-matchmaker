@@ -384,6 +384,12 @@ async def _bc(ctx: MessageContext, args: str = None):
 	await bot.commands.bc_leaderboard(ctx)
 
 
+@soracle_command('impact')
+async def _impact(ctx: MessageContext, args: str = None):
+	page = int(args) if args and args.isdigit() else None
+	await bot.commands.impact_leaderboard(ctx, page=page or 1)
+
+
 @soracle_command('doom')
 async def _doom(ctx: MessageContext, args: str = None):
 	await bot.commands.doom_leaderboard(ctx)

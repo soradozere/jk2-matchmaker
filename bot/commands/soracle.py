@@ -3,7 +3,7 @@ __all__ = [
 	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
 	'streaks_leaderboard', 'doom_leaderboard', 'redblue', 'nemesis', 'friend', 'curse', 'duos', 'wrapped', 'last_game_soracle',
-	'balance_options', 'achievements'
+	'balance_options', 'achievements', 'impact_leaderboard'
 ]
 
 import re
@@ -153,6 +153,32 @@ async def doom_leaderboard(ctx):
 
 async def bc_leaderboard(ctx):
 	await _stat_leaderboard(ctx, 'base_cleaner', "Top base cleaners")
+
+
+async def impact_leaderboard(ctx, page: int = 1):
+	""" =impact / =impact 2 / =impact 3 -- top 10 players by impact, paginated
+		10 at a time (same paging pattern as the vanilla =lb). ALL-TIME like
+		tier, not month-to-date -- impact is a standing judgment of a player,
+		not something that should reset with the monthly stats. """
+	page = (page or 1) - 1
+	try:
+		data = await soracle.fetch_stat_leaderboard('impact', all_time=True)
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	full = data.get('top') or []
+	pages = ceil(len(full) / 10) or 1
+	rows = full[page * 10:(page + 1) * 10]
+	if not rows:
+		raise bot.Exc.NotFoundError(
+			ctx.qc.gt("Nothing recorded yet.") if page == 0 else ctx.qc.gt("That page doesn't exist.")
+		)
+
+	embed = Embed(title=f"Top impact — page {page + 1} of {pages}", colour=Colour(0x50e3c2), url=SITE_URL)
+	embed.description = "\n".join(
+		f"**{(page * 10) + n + 1}.** {r['name']} — **{r['value']}**" for n, r in enumerate(rows)
+	)
+	await ctx.reply(embed=embed)
 
 
 async def _monthly_players(ctx):
