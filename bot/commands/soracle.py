@@ -180,11 +180,20 @@ async def impact_leaderboard(ctx, page: int = 1):
 		)
 
 	embed = Embed(
-		title=f"Top impact — {data.get('month', 'this month')} — page {page + 1} of {pages}",
+		title=f"Impact leaderboard — {data.get('month', 'this month')} — page {page + 1} of {pages}",
 		colour=Colour(0x50e3c2), url=SITE_URL
 	)
-	embed.description = "\n".join(
-		f"**{(page * 10) + n + 1}.** {r['name']} — **{r['value']}**" for n, r in enumerate(rows)
+	# Two side-by-side columns, same layout as the vanilla =lb, rather than one
+	# combined text block -- reads as an actual table instead of a list.
+	embed.add_field(
+		name="Player",
+		value="\n".join(f"**{(page * 10) + n + 1}.** {r['name']}" for n, r in enumerate(rows)),
+		inline=True
+	)
+	embed.add_field(
+		name="Impact",
+		value="\n".join(f"**{r['value']}**" for r in rows),
+		inline=True
 	)
 	await ctx.reply(embed=embed)
 
