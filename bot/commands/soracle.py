@@ -14,7 +14,7 @@ from urllib.parse import quote
 
 from nextcord import Member, Embed, Colour
 
-from core.utils import find, get_nick
+from core.utils import find, get_nick, discord_table
 from core.console import log
 
 import bot
@@ -158,7 +158,12 @@ async def bc_leaderboard(ctx):
 async def impact_leaderboard(ctx, page: int = 1):
 	""" =impact / =impact 2 / =impact 3 -- top 10 players by impact this
 		month, paginated 10 at a time (same paging pattern as the vanilla
-		=lb) -- month-to-date, same as the other stat boards (=kills, =caps). """
+		=lb) -- month-to-date, same as the other stat boards (=kills, =caps).
+
+		Plain message + discord_table, like =lb's actual rendering -- not an
+		embed. Embeds cap out around ~430px wide regardless of window size,
+		too narrow for a 6-column table (it wraps mid-row); a bare message
+		gets the full channel width instead. """
 	page = (page or 1) - 1
 	try:
 		data = await soracle.fetch_stat_leaderboard('impact')
@@ -167,29 +172,31 @@ async def impact_leaderboard(ctx, page: int = 1):
 
 	full = data.get('top') or []
 	pages = ceil(len(full) / 10) or 1
-	rows = full[page * 10:(page + 1) * 10]
-	if not rows:
+	page_rows = full[page * 10:(page + 1) * 10]
+	if not page_rows:
 		raise bot.Exc.NotFoundError(
 			ctx.qc.gt("Nothing recorded this month yet.") if page == 0 else ctx.qc.gt("That page doesn't exist.")
 		)
 
-	embed = Embed(
-		title=f"Impact leaderboard — {data.get('month', 'this month')} — page {page + 1} of {pages}",
-		colour=Colour(0x50e3c2), url=SITE_URL
+	rows = []
+	for n, r in enumerate(page_rows):
+		wins, losses = r.get('wins', 0), r.get('losses', 0)
+		winrate = int(wins * 100 / ((wins + losses) or 1))
+		rows.append([
+			(page * 10) + n + 1,
+			r.get('value', '?'),
+			ROLE_DISPLAY.get(r.get('role'), r.get('role') or '—'),
+			r['name'],
+			r.get('matches', wins + losses),
+			f"{wins}/{losses} ({winrate}%)"
+		])
+
+	header = "⚡ {title} — {month} — {page_info}".format(
+		title=ctx.qc.gt("Impact leaderboard"),
+		month=data.get('month', 'this month'),
+		page_info=ctx.qc.gt("Page {page} of {pages}").format(page=page + 1, pages=pages)
 	)
-	# Two side-by-side columns, same layout as the vanilla =lb, rather than one
-	# combined text block -- reads as an actual table instead of a list.
-	embed.add_field(
-		name="Player",
-		value="\n".join(f"**{(page * 10) + n + 1}.** {r['name']}" for n, r in enumerate(rows)),
-		inline=True
-	)
-	embed.add_field(
-		name="Impact",
-		value="\n".join(f"**{r['value']}**" for r in rows),
-		inline=True
-	)
-	await ctx.reply(embed=embed)
+	await ctx.reply(header + "\n" + discord_table(["№", "Impact", "Role", "Player", "Matches", "W/L"], rows))
 
 
 async def _monthly_players(ctx):
