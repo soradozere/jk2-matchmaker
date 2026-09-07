@@ -307,25 +307,19 @@ _put.on_autocomplete('match_id')(autocomplete.match_ids)
 
 # noadds -> ...
 
-@groups.admin_noadds.subcommand(name='list', description='Show noadds list.')
+@groups.admin_noadds.subcommand(name='list', description='Show banned players on this channel.')
 async def _noadds(
 		interaction: Interaction
 ): await run_slash(bot.commands.noadds, interaction=interaction)
 
 
-@groups.admin_noadds.subcommand(name='add', description='Ban a player from participating in the queues.')
+@groups.admin_noadds.subcommand(name='add', description='Ban a player from this channel for a number of games.')
 async def _noadd(
 		interaction: Interaction,
 		player: Member = SlashOption(verify=False),
-		duration: str = SlashOption(required=False),
+		games: int = SlashOption(required=False, description="1-5 games (default 1). Ticks down as matches start here."),
 		reason: str = SlashOption(required=False)
-):
-	async def _run(ctx, *args, _duration=None, **kwargs):
-		if _duration:
-			_duration = _parse_duration(ctx, _duration)
-		await bot.commands.noadd(ctx, *args, duration=_duration, **kwargs)
-
-	await run_slash(_run, interaction=interaction, player=player, _duration=duration, reason=reason)
+): await run_slash(bot.commands.noadd, interaction=interaction, player=player, games=games, reason=reason)
 
 
 @groups.admin_noadds.subcommand(name='remove', description='Remove a player from the noadds list.')

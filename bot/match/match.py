@@ -81,6 +81,10 @@ class Match:
 		if match.ranked:
 			match.states.append(match.WAITING_REPORT)
 		bot.active_matches.append(match)
+		# Every match that starts on this channel counts as one "game served"
+		# toward any active match-count ban here (bot/stats/noadds.py) --
+		# regardless of whether the banned player would've been in it.
+		await bot.noadds.tick_games(ctx.qc.id)
 
 	@classmethod
 	async def fake_ranked_match(cls, ctx, queue, qc, winners, losers, draw=False, **kwargs):
