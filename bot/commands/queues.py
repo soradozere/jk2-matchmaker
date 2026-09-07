@@ -1,6 +1,6 @@
 __all__ = [
 	'add', 'remove', 'who', 'add_player', 'remove_player', 'promote', 'start', 'split',
-	'reset', 'subscribe', 'server', 'maps'
+	'reset', 'subscribe', 'server', 'maps', 'set_my_queues', 'my_queues'
 ]
 
 import time
@@ -8,6 +8,15 @@ from random import choice
 from nextcord import Member
 from core.utils import error_embed, join_and, find, seconds_to_str
 import bot
+from bot import player_queue_prefs
+
+
+def _matching_queues(qc, targets):
+	""" Queues on this channel whose name or an alias matches any of `targets`
+		(already-lowercased query strings). Shared by add/remove/set_my_queues. """
+	return [q for q in qc.queues if any(
+		t == q.name.lower() or t in (a["alias"].lower() for a in q.cfg.aliases) for t in targets
+	)]
 
 
 async def add(ctx, queues: str = None):
@@ -21,15 +30,20 @@ async def add(ctx, queues: str = None):
 
 	# select queues requested by user
 	elif len(targets):
-		t_queues = [q for q in ctx.qc.queues if any(
-			(t == q.name.lower() or t in (a["alias"].lower() for a in q.cfg.aliases) for t in targets)
-		)]
+		t_queues = _matching_queues(ctx.qc, targets)
 
-	# select active queues or default queues if no active queues
+	# a player-set personal default (e.g. "always join comp and casual")
+	# overrides the channel default; falls through to the normal channel
+	# default if unset, or if it no longer resolves to anything real (queue
+	# renamed/removed since they set it) -- =j behaves exactly as before
+	# unless a player has deliberately opted into this.
 	else:
-		t_queues = [q for q in ctx.qc.queues if len(q.queue) and q.cfg.is_default]
+		preferred = await player_queue_prefs.get_default(ctx.qc.id, ctx.author.id)
+		t_queues = [q for q in ctx.qc.queues if q.name.lower() in preferred] if preferred else []
 		if not len(t_queues):
-			t_queues = [q for q in ctx.qc.queues if q.cfg.is_default]
+			t_queues = [q for q in ctx.qc.queues if len(q.queue) and q.cfg.is_default]
+			if not len(t_queues):
+				t_queues = [q for q in ctx.qc.queues if q.cfg.is_default]
 
 	qr = dict()  # get queue responses
 	for q in t_queues:
@@ -59,11 +73,7 @@ async def remove(ctx, queues: str = None):
 	if not len(targets):
 		t_queues = [q for q in ctx.qc.queues if q.is_added(ctx.author)]
 	else:
-		t_queues = [
-			q for q in ctx.qc.queues if
-			any((t == q.name.lower() or t in (a["alias"].lower() for a in q.cfg.aliases) for t in targets)) and
-			q.is_added(ctx.author)
-		]
+		t_queues = [q for q in _matching_queues(ctx.qc, targets) if q.is_added(ctx.author)]
 
 	if len(t_queues):
 		for q in t_queues:
@@ -231,3 +241,41 @@ async def maps(ctx, queue: str, one: bool = False):
 			", ".join((f"`{i['name']}`" for i in q.cfg.maps)),
 			title=ctx.qc.gt("Maps for **{queue}**").format(queue=q.name)
 		)
+
+
+async def set_my_queues(ctx, queues: str = None):
+	""" Player self-service: sets which queues a bare =j / ++ should add
+		*this player* to on this channel (e.g. both "comp" and "casual" every
+		time), instead of just the channel's own default queue(s). Passing
+		nothing / "off" clears it, reverting to the normal channel default. """
+	if not queues or queues.strip().lower() in ("off", "default", "clear", "none"):
+		await player_queue_prefs.set_default(ctx.qc.id, ctx.author.id, [])
+		await ctx.success(ctx.qc.gt("`{p}j` will use this channel's normal default queue(s) for you again.").format(
+			p=ctx.qc.cfg.prefix
+		))
+		return
+
+	targets = queues.lower().split(" ")
+	matched = _matching_queues(ctx.qc, targets)
+	if not matched:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("None of those queue names were found on this channel."))
+
+	await player_queue_prefs.set_default(ctx.qc.id, ctx.author.id, [q.name.lower() for q in matched])
+	await ctx.success(ctx.qc.gt("`{p}j` will now add you to: {names}").format(
+		p=ctx.qc.cfg.prefix, names=join_and([f"**{q.name}**" for q in matched])
+	))
+
+
+async def my_queues(ctx):
+	""" Shows the player's current =j default on this channel, if any. """
+	preferred = await player_queue_prefs.get_default(ctx.qc.id, ctx.author.id)
+	if not preferred:
+		await ctx.reply(ctx.qc.gt("You're using this channel's normal default queue(s) for `{p}j`.").format(
+			p=ctx.qc.cfg.prefix
+		))
+		return
+
+	names = [q.name for q in ctx.qc.queues if q.name.lower() in preferred]
+	await ctx.reply(ctx.qc.gt("`{p}j` currently adds you to: {names}").format(
+		p=ctx.qc.cfg.prefix, names=join_and([f"**{n}**" for n in names]) if names else ", ".join(preferred)
+	))

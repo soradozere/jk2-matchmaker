@@ -113,6 +113,16 @@ async def _remove(ctx: MessageContext, args: str = None):
 	await bot.commands.remove(ctx, queues=args)
 
 
+@message_command('set_my_queues')
+async def _set_my_queues(ctx: MessageContext, args: str = None):
+	await bot.commands.set_my_queues(ctx, queues=args)
+
+
+@message_command('my_queues')
+async def _my_queues(ctx: MessageContext, args: str = None):
+	await bot.commands.my_queues(ctx)
+
+
 @message_command('who')
 async def _remove(ctx: MessageContext, args: str = None):
 	await bot.commands.who(ctx, queues=args)
@@ -501,6 +511,11 @@ async def _cancel_match(ctx: MessageContext, args: str = None):
 	if not args or not args.isdigit():
 		raise bot.Exc.SyntaxError(f"Usage: {ctx.qc.cfg.prefix}cancel_match __match_id__")
 	await bot.commands.report_admin(ctx, match_id=int(args), abort=True)
+
+
+@message_command('set_pick_order')
+async def _set_pick_order(ctx: MessageContext, args: str = None):
+	await bot.commands.set_pick_order(ctx, order=args)
 
 
 @message_command('promote')

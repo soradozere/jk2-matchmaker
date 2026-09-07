@@ -452,6 +452,23 @@ async def _remove(
 _remove.on_autocomplete("queues")(autocomplete.queues)
 
 
+@dc.slash_command(name='set_my_queues', description='Set which queues a bare /add joins you to on this channel.', **guild_kwargs)
+async def _set_my_queues(
+	interaction: Interaction,
+	queues: str = SlashOption(
+		name="queues",
+		description="Queue names, space-separated (e.g. 'comp casual'). 'off' to clear.",
+		required=False)
+): await run_slash(bot.commands.set_my_queues, interaction=interaction, queues=queues)
+_set_my_queues.on_autocomplete("queues")(autocomplete.queues)
+
+
+@dc.slash_command(name='my_queues', description='Show your current /add default on this channel.', **guild_kwargs)
+async def _my_queues(
+	interaction: Interaction,
+): await run_slash(bot.commands.my_queues, interaction=interaction)
+
+
 @dc.slash_command(name='who', description='List added players.', **guild_kwargs)
 async def _who(
 	interaction: Interaction,
@@ -497,6 +514,13 @@ async def _teams(
 async def _combos(
 		interaction: Interaction
 ): await run_slash(bot.commands.show_captain_combos, interaction=interaction)
+
+
+@dc.slash_command(name='set_pick_order', description='Mod-only: change the current draft\'s pick order.', **guild_kwargs)
+async def _set_pick_order(
+		interaction: Interaction,
+		order: str = SlashOption(description="A preset name (standard/xango/batcher/copium) or a raw a/b string.")
+): await run_slash(bot.commands.set_pick_order, interaction=interaction, order=order)
 
 
 @dc.slash_command(name='subme', description='Request a substitute', **guild_kwargs)
