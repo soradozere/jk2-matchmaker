@@ -113,14 +113,14 @@ async def _remove(ctx: MessageContext, args: str = None):
 	await bot.commands.remove(ctx, queues=args)
 
 
-@message_command('set_my_queues')
-async def _set_my_queues(ctx: MessageContext, args: str = None):
-	await bot.commands.set_my_queues(ctx, queues=args)
+@message_command('set_my_channels')
+async def _set_my_channels(ctx: MessageContext, args: str = None):
+	await bot.commands.set_my_channels(ctx, channels=args)
 
 
-@message_command('my_queues')
-async def _my_queues(ctx: MessageContext, args: str = None):
-	await bot.commands.my_queues(ctx)
+@message_command('my_channels')
+async def _my_channels(ctx: MessageContext, args: str = None):
+	await bot.commands.my_channels(ctx)
 
 
 @message_command('who')

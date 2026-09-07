@@ -1,22 +1,74 @@
 __all__ = [
 	'add', 'remove', 'who', 'add_player', 'remove_player', 'promote', 'start', 'split',
-	'reset', 'subscribe', 'server', 'maps', 'set_my_queues', 'my_queues'
+	'reset', 'subscribe', 'server', 'maps', 'set_my_channels', 'my_channels'
 ]
 
 import time
 from random import choice
-from nextcord import Member
-from core.utils import error_embed, join_and, find, seconds_to_str
+from nextcord import Member, TextChannel
+from core.utils import error_embed, join_and, find, seconds_to_str, resolve_channel
 import bot
 from bot import player_queue_prefs
 
 
 def _matching_queues(qc, targets):
 	""" Queues on this channel whose name or an alias matches any of `targets`
-		(already-lowercased query strings). Shared by add/remove/set_my_queues. """
+		(already-lowercased query strings). Shared by add/remove. """
 	return [q for q in qc.queues if any(
 		t == q.name.lower() or t in (a["alias"].lower() for a in q.cfg.aliases) for t in targets
 	)]
+
+
+def _default_queues(qc):
+	""" A channel's own default queue(s) for a bare =j -- active ones first,
+		falling back to every default queue if none are active. Shared by add()
+		and the cross-channel mirror, so a linked channel picks queues the same
+		way a real bare =j typed there would. """
+	t_queues = [q for q in qc.queues if len(q.queue) and q.cfg.is_default]
+	return t_queues or [q for q in qc.queues if q.cfg.is_default]
+
+
+async def _mirror_linked_channels(ctx, member, join):
+	""" For a bare =j/++ or =l/-- (not a named-queue call), also join/leave
+		the player's OTHER linked channels (=set_my_channels) -- e.g. joining
+		#comp also joins #casual, and leaving either leaves both, since
+		"comp"/"casual" are separate channels here, not queues within one
+		channel. Best-effort: a channel that's gone, no longer bot-managed, or
+		where the player isn't allowed to add is silently skipped rather than
+		failing the whole command -- their own channel already succeeded. """
+	linked = await player_queue_prefs.get_linked_channels(member.id)
+	if not linked:
+		return
+
+	for channel_id in linked:
+		if channel_id == ctx.qc.id:
+			continue
+		if (other_qc := bot.queue_channels.get(channel_id)) is None:
+			continue
+		system_ctx = bot.SystemContext(other_qc)
+
+		if join:
+			try:
+				await other_qc.check_allowed_to_add(system_ctx, member)
+			except bot.Exc.PubobotException:
+				continue
+			other_queues = other_qc.queues if len(other_qc.queues) == 1 else _default_queues(other_qc)
+			started = False
+			for q in other_queues:
+				if await q.add_member(system_ctx, member) == bot.Qr.QueueStarted:
+					started = True
+					break  # match just formed there -- stop, same as a real bare =j would
+			if started or any(q.is_added(member) for q in other_queues):
+				await other_qc.update_expire(member)
+				await system_ctx.notice(other_qc.topic)
+		else:
+			other_queues = [q for q in other_qc.queues if q.is_added(member)]
+			if other_queues:
+				for q in other_queues:
+					q.pop_members(member)
+				if not any(q.is_added(member) for q in other_qc.queues):
+					bot.expire.cancel(other_qc, member)
+				await system_ctx.notice(other_qc.topic)
 
 
 async def add(ctx, queues: str = None):
@@ -24,32 +76,26 @@ async def add(ctx, queues: str = None):
 	phrase = await ctx.qc.check_allowed_to_add(ctx, ctx.author)
 
 	targets = queues.lower().split(" ") if queues else []
+	bare_join = not len(targets)
 	# select the only one queue on the channel
-	if not len(targets) and len(ctx.qc.queues) == 1:
+	if bare_join and len(ctx.qc.queues) == 1:
 		t_queues = ctx.qc.queues
 
 	# select queues requested by user
 	elif len(targets):
 		t_queues = _matching_queues(ctx.qc, targets)
 
-	# a player-set personal default (e.g. "always join comp and casual")
-	# overrides the channel default; falls through to the normal channel
-	# default if unset, or if it no longer resolves to anything real (queue
-	# renamed/removed since they set it) -- =j behaves exactly as before
-	# unless a player has deliberately opted into this.
+	# select active queues or default queues if no active queues
 	else:
-		preferred = await player_queue_prefs.get_default(ctx.qc.id, ctx.author.id)
-		t_queues = [q for q in ctx.qc.queues if q.name.lower() in preferred] if preferred else []
-		if not len(t_queues):
-			t_queues = [q for q in ctx.qc.queues if len(q.queue) and q.cfg.is_default]
-			if not len(t_queues):
-				t_queues = [q for q in ctx.qc.queues if q.cfg.is_default]
+		t_queues = _default_queues(ctx.qc)
 
 	qr = dict()  # get queue responses
 	for q in t_queues:
 		qr[q] = await q.add_member(ctx, ctx.author)
 		if qr[q] == bot.Qr.QueueStarted:
 			await ctx.notice(ctx.qc.topic)
+			if bare_join:
+				await _mirror_linked_channels(ctx, ctx.author, join=True)
 			return
 
 	if len(not_allowed := [q for q in qr.keys() if qr[q] == bot.Qr.NotAllowed]):
@@ -65,12 +111,16 @@ async def add(ctx, queues: str = None):
 	else:  # have to give some response for slash commands
 		await ctx.ignore(content=ctx.qc.topic, embed=error_embed(ctx.qc.gt("Action had no effect."), title=None))
 
+	if bare_join:
+		await _mirror_linked_channels(ctx, ctx.author, join=True)
+
 
 async def remove(ctx, queues: str = None):
 	""" add author from channel queues """
 	targets = queues.lower().split(" ") if queues else []
+	bare_leave = not len(targets)
 
-	if not len(targets):
+	if bare_leave:
 		t_queues = [q for q in ctx.qc.queues if q.is_added(ctx.author)]
 	else:
 		t_queues = [q for q in _matching_queues(ctx.qc, targets) if q.is_added(ctx.author)]
@@ -85,6 +135,9 @@ async def remove(ctx, queues: str = None):
 		await ctx.notice(ctx.qc.topic)
 	else:
 		await ctx.ignore(content=ctx.qc.topic, embed=error_embed(ctx.qc.gt("Action had no effect."), title=None))
+
+	if bare_leave:
+		await _mirror_linked_channels(ctx, ctx.author, join=False)
 
 
 async def who(ctx, queues: str = None):
@@ -243,39 +296,59 @@ async def maps(ctx, queue: str, one: bool = False):
 		)
 
 
-async def set_my_queues(ctx, queues: str = None):
-	""" Player self-service: sets which queues a bare =j / ++ should add
-		*this player* to on this channel (e.g. both "comp" and "casual" every
-		time), instead of just the channel's own default queue(s). Passing
-		nothing / "off" clears it, reverting to the normal channel default. """
-	if not queues or queues.strip().lower() in ("off", "default", "clear", "none"):
-		await player_queue_prefs.set_default(ctx.qc.id, ctx.author.id, [])
-		await ctx.success(ctx.qc.gt("`{p}j` will use this channel's normal default queue(s) for you again.").format(
-			p=ctx.qc.cfg.prefix
-		))
+async def set_my_channels(ctx, channel: TextChannel = None, channels: str = None):
+	""" Player self-service: links this channel with one or more OTHER queue
+		channels (e.g. #comp + #casual) so a bare =j / ++ / =l / -- in any of
+		them also joins/leaves the others. Additive -- run it again with a
+		different channel to link more. "off" clears the whole group.
+
+		`channel` is the slash path's native single-channel picker; `channels`
+		is the message-command path's raw text, which can name several at
+		once (space-separated mentions), or the string "off". """
+	if channel is None and (channels or "").strip().lower() in ("off", "default", "clear", "none"):
+		await player_queue_prefs.clear_linked_channels(ctx.author.id)
+		await ctx.success(ctx.qc.gt(
+			"Unlinked — `{p}j` / `{p}l` only affect the channel you use them in again."
+		).format(p=ctx.qc.cfg.prefix))
 		return
 
-	targets = queues.lower().split(" ")
-	matched = _matching_queues(ctx.qc, targets)
-	if not matched:
-		raise bot.Exc.SyntaxError(ctx.qc.gt("None of those queue names were found on this channel."))
+	targets, unresolved = ([channel] if channel else []), []
+	for token in (channels or "").split(" "):
+		if not (token := token.strip()):
+			continue
+		if (resolved := resolve_channel(ctx.channel.guild, token)) is None:
+			unresolved.append(token)
+		else:
+			targets.append(resolved)
 
-	await player_queue_prefs.set_default(ctx.qc.id, ctx.author.id, [q.name.lower() for q in matched])
-	await ctx.success(ctx.qc.gt("`{p}j` will now add you to: {names}").format(
-		p=ctx.qc.cfg.prefix, names=join_and([f"**{q.name}**" for q in matched])
+	if not targets:
+		raise bot.Exc.SyntaxError(ctx.qc.gt(
+			"Usage: {p}set_my_channels __#channel [#channel2 ...]__ (or `off` to unlink everything)"
+		).format(p=ctx.qc.cfg.prefix))
+	if unresolved:
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Not a channel I could find: {names}").format(names=", ".join(unresolved)))
+
+	if len(not_queue_channels := [c for c in targets if bot.queue_channels.get(c.id) is None]):
+		raise bot.Exc.SyntaxError(ctx.qc.gt("Not a queue channel: {names}").format(
+			names=join_and([c.mention for c in not_queue_channels])
+		))
+
+	await player_queue_prefs.add_linked_channels(ctx.author.id, [ctx.qc.id] + [c.id for c in targets])
+	linked = await player_queue_prefs.get_linked_channels(ctx.author.id)
+	await ctx.success(ctx.qc.gt("`{p}j` / `{p}l` now cover: {names}").format(
+		p=ctx.qc.cfg.prefix, names=join_and([f"<#{cid}>" for cid in linked])
 	))
 
 
-async def my_queues(ctx):
-	""" Shows the player's current =j default on this channel, if any. """
-	preferred = await player_queue_prefs.get_default(ctx.qc.id, ctx.author.id)
-	if not preferred:
-		await ctx.reply(ctx.qc.gt("You're using this channel's normal default queue(s) for `{p}j`.").format(
-			p=ctx.qc.cfg.prefix
-		))
+async def my_channels(ctx):
+	""" Shows the player's current linked-channel group, if any. """
+	linked = await player_queue_prefs.get_linked_channels(ctx.author.id)
+	if not linked:
+		await ctx.reply(ctx.qc.gt(
+			"You haven't linked any channels — `{p}j` / `{p}l` only affect the channel you use them in."
+		).format(p=ctx.qc.cfg.prefix))
 		return
 
-	names = [q.name for q in ctx.qc.queues if q.name.lower() in preferred]
-	await ctx.reply(ctx.qc.gt("`{p}j` currently adds you to: {names}").format(
-		p=ctx.qc.cfg.prefix, names=join_and([f"**{n}**" for n in names]) if names else ", ".join(preferred)
+	await ctx.reply(ctx.qc.gt("`{p}j` / `{p}l` currently cover: {names}").format(
+		p=ctx.qc.cfg.prefix, names=join_and([f"<#{cid}>" for cid in linked])
 	))

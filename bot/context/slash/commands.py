@@ -452,21 +452,20 @@ async def _remove(
 _remove.on_autocomplete("queues")(autocomplete.queues)
 
 
-@dc.slash_command(name='set_my_queues', description='Set which queues a bare /add joins you to on this channel.', **guild_kwargs)
-async def _set_my_queues(
+@dc.slash_command(name='set_my_channels', description='Link another queue channel (bare /add or /remove covers both).', **guild_kwargs)
+async def _set_my_channels(
 	interaction: Interaction,
-	queues: str = SlashOption(
-		name="queues",
-		description="Queue names, space-separated (e.g. 'comp casual'). 'off' to clear.",
-		required=False)
-): await run_slash(bot.commands.set_my_queues, interaction=interaction, queues=queues)
-_set_my_queues.on_autocomplete("queues")(autocomplete.queues)
+	channel: TextChannel = SlashOption(required=False, description="A queue channel to link with this one."),
+	off: bool = SlashOption(required=False, description="Unlink every channel instead."),
+): await run_slash(
+	bot.commands.set_my_channels, interaction=interaction, channel=channel, channels=("off" if off else None)
+)
 
 
-@dc.slash_command(name='my_queues', description='Show your current /add default on this channel.', **guild_kwargs)
-async def _my_queues(
+@dc.slash_command(name='my_channels', description='Show your currently linked queue channels.', **guild_kwargs)
+async def _my_channels(
 	interaction: Interaction,
-): await run_slash(bot.commands.my_queues, interaction=interaction)
+): await run_slash(bot.commands.my_channels, interaction=interaction)
 
 
 @dc.slash_command(name='who', description='List added players.', **guild_kwargs)

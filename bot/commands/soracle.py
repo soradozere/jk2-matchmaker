@@ -20,7 +20,7 @@ import bot
 from bot import soracle
 
 # Site role names -> community names
-ROLE_DISPLAY = {"Cleaner": "BC"}
+ROLE_DISPLAY = {"Cleaner": "BC", "returns": "return"}
 
 # Public site for player-facing links (embed titles, profile links). See
 # soracle.site_url() for why this is not SORACLE_API_URL.
@@ -190,11 +190,11 @@ async def impact_leaderboard(ctx, page: int = 1):
 		winrate = int(wins * 100 / ((wins + losses) or 1))
 		rows.append([
 			(page * 10) + n + 1,
-			r.get('value', '?'),
-			ROLE_DISPLAY.get(r.get('role'), r.get('role') or '—'),
 			r['name'],
+			r.get('value', '?'),
 			r.get('matches', wins + losses),
-			f"{wins}/{losses} ({winrate}%)"
+			f"{wins}/{losses} ({winrate}%)",
+			ROLE_DISPLAY.get(r.get('role'), r.get('role') or '—')
 		])
 
 	header = "⚡ {title} — {month} — {page_info}".format(
@@ -202,7 +202,7 @@ async def impact_leaderboard(ctx, page: int = 1):
 		month=data.get('month', 'this month'),
 		page_info=ctx.qc.gt("Page {page} of {pages}").format(page=page + 1, pages=pages)
 	)
-	await ctx.reply(header + "\n" + discord_table(["№", "Impact", "Role", "Player", "Matches", "W/L"], rows))
+	await ctx.reply(header + "\n" + discord_table(["№", "Player", "Impact", "Matches", "W/L", "Main Role"], rows))
 
 
 async def _monthly_players(ctx):
