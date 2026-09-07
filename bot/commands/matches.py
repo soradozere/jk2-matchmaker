@@ -1,7 +1,8 @@
 __all__ = [
 	'show_matches', 'show_teams', 'set_ready', 'sub_me', 'sub_for', 'put',
 	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual',
-	'rebalance', 'manual', 'remove_match_player', 'force_start_match', 'show_captain_combos'
+	'rebalance', 'manual', 'remove_match_player', 'force_start_match', 'show_captain_combos',
+	'set_pick_order'
 ]
 
 from nextcord import Member, DiscordException, Embed, Colour
@@ -13,6 +14,7 @@ from core.utils import get, find
 import bot
 from bot import soracle
 from bot import captain_combos
+from bot.match.draft import PICK_ORDER_PRESETS
 
 
 def author_match(coro):
@@ -102,6 +104,36 @@ async def show_captain_combos(ctx):
 		await ctx.reply(embed=embed, ephemeral=True)
 	else:
 		await ctx.reply(embed=embed)
+
+
+async def set_pick_order(ctx, order: str = None):
+	""" Mod-only: change the CURRENT draft's pick order (who picks when)
+		without touching the queue's own default pick_order config. Not
+		@author_match -- a mod fixing this up is often not a player in the
+		match themselves, so it looks for the channel's in-progress draft
+		instead of requiring the caller to be one of its players. """
+	ctx.check_perms(ctx.Perms.MODERATOR)
+	preset_list = ", ".join(PICK_ORDER_PRESETS)
+	if not order:
+		raise bot.Exc.SyntaxError(ctx.qc.gt(
+			"Usage: {p}set_pick_order __preset-or-ab-string__ (presets: {presets})"
+		).format(p=ctx.qc.cfg.prefix, presets=preset_list))
+
+	if (match := find(lambda m: m.qc == ctx.qc and m.state == m.DRAFT, bot.active_matches)) is None:
+		raise bot.Exc.MatchStateError(ctx.qc.gt("No draft in progress on this channel."))
+
+	key = order.strip().lower()
+	sequence = PICK_ORDER_PRESETS.get(key, key)
+	if not sequence or set(sequence) - set("ab"):
+		raise bot.Exc.SyntaxError(ctx.qc.gt(
+			"Not a known preset ({presets}) or a valid a/b order (only a and b characters)."
+		).format(presets=preset_list))
+
+	match.draft.set_pick_order(sequence)
+	await ctx.success(ctx.qc.gt("Pick order for this draft is now `{order}`{label}.").format(
+		order=sequence, label=f" ({key})" if key in PICK_ORDER_PRESETS else ""
+	))
+	await match.draft.print(ctx)
 
 
 @author_match

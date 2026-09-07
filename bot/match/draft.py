@@ -3,6 +3,16 @@ import bot
 from core.utils import find
 from nextcord import DiscordException
 
+# Named shortcuts for =set_pick_order, on top of typing a raw a/b string
+# directly. Community-agreed presets -- update by editing this dict, same as
+# captain_combos.py.
+PICK_ORDER_PRESETS = {
+	"standard": "ababababba",
+	"xango": "ababbababa",
+	"batcher": "abababbaba",
+	"copium": "abbabababa",
+}
+
 
 class Draft:
 
@@ -22,6 +32,14 @@ class Draft:
 
 	async def start(self, ctx):
 		await self.refresh(ctx)
+
+	def set_pick_order(self, order):
+		""" Overrides this match's pick order mid-draft (mod-only, see
+			bot.commands.matches.set_pick_order) -- e.g. switching to a
+			different named preset without touching the queue's own default
+			pick_order config. Only affects picks from this point on; already-
+			made picks are untouched. """
+		self.pick_order = [self.pick_steps[c] for c in order]
 
 	async def print(self, ctx):
 		try:

@@ -18,6 +18,7 @@ from . import urban
 from . import welcome
 from . import youtube
 from . import levelup
+from . import player_queue_prefs
 from .context import Context, SlashContext, SystemContext
 from . import commands
 
