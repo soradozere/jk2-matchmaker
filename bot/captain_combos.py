@@ -21,13 +21,13 @@ COMBOS = [
 	("Bizzle", "Fetchd", True, None),
 	("Bizzle", "Cooky", True, None),
 	("Bizzle", "Ultra", True, None),
-	("Bizzle", "Interlude", False, "Interlude"),
+	("Bizzle", "Interlude", True, None),
 	("Bizzle", "Cheese", False, "Cheese"),
 	("Bizzle", "Arhont", False, "Arhont"),
 
 	("Fetchd", "Cooky", True, None),
 	("Fetchd", "Ultra", True, None),
-	("Fetchd", "Interlude", False, "Interlude"),
+	("Fetchd", "Interlude", True, None),
 	("Fetchd", "Cheese", False, "Cheese"),
 	("Fetchd", "Arhont", False, "Arhont"),
 
@@ -40,7 +40,7 @@ COMBOS = [
 	("Interlude", "Ultra", True, None),
 	("Interlude", "Original", True, None),
 	("Interlude", "Shax", True, None),
-	("Interlude", "Twinblade", False, "Twinblade"),
+	("Interlude", "Twinblade", True, None),
 	("Interlude", "Cheese", False, "Cheese"),
 
 	("Original", "Cooky", True, None),
@@ -52,7 +52,7 @@ COMBOS = [
 	("Cheese", "Ultra", True, None),
 	("Cheese", "Andrew", False, "Andrew"),
 
-	("Suvix", "Twinblade", True, None),
+	("Suvix", "Twinblade", False, "Suvix"),
 	("Suvix", "Retpecs", True, None),
 	("Suvix", "Shax", True, None),
 	("Suvix", "Jin", True, None),
@@ -61,7 +61,7 @@ COMBOS = [
 	("Shax", "Retpecs", True, None),
 
 	("Twinblade", "Andrew", True, None),
-	("Twinblade", "Jin", True, None),
+	("Twinblade", "Jin", False, "Jin"),
 	("Twinblade", "Retpecs", True, None),
 
 	("Arhont", "Andrew", True, None),
@@ -82,29 +82,23 @@ COMBOS = [
 	("Glempa", "Luke", True, None),
 
 	("Canon", "Giraffe", True, None),
-	("Canon", "Flawless", True, None),
 	("Canon", "Eze", True, None),
 	("Canon", "Levi", True, None),
-	("Canon", "Yuki", True, None),
+	("Canon", "Yuki", False, "Canon"),
 
 	("Xan", "Luke", True, None),
 	("Xan", "Yuki", True, None),
 	("Xan", "Millhouse", True, None),
 	("Xan", "Downfall", False, "Downfall"),
 
-	("Eze", "Flawless", True, None),
 	("Eze", "Yuki", True, None),
 	("Eze", "Levi", True, None),
 	("Eze", "Giraffe", True, None),
 
 	("Giraffe", "Levi", True, None),
-	("Giraffe", "Flawless", True, None),
 	("Giraffe", "Yuki", True, None),
 
 	("Millhouse", "Downfall", True, None),
-
-	("Flawless", "Levi", True, None),
-	("Flawless", "Yuki", True, None),
 
 	("Levi", "Yuki", True, None),
 
