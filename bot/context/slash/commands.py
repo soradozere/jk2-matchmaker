@@ -455,11 +455,14 @@ _remove.on_autocomplete("queues")(autocomplete.queues)
 @dc.slash_command(name='set_my_channels', description='Link another queue channel (bare /add or /remove covers both).', **guild_kwargs)
 async def _set_my_channels(
 	interaction: Interaction,
-	channel: TextChannel = SlashOption(required=False, description="A queue channel to link with this one."),
-	off: bool = SlashOption(required=False, description="Unlink every channel instead."),
-): await run_slash(
-	bot.commands.set_my_channels, interaction=interaction, channel=channel, channels=("off" if off else None)
-)
+	channel: TextChannel = SlashOption(description="A queue channel to link with this one."),
+): await run_slash(bot.commands.set_my_channels, interaction=interaction, channel=channel)
+
+
+@dc.slash_command(name='unlink_my_channels', description='Unlink every channel -- /add and /remove go back to affecting only where you use them.', **guild_kwargs)
+async def _unlink_my_channels(
+	interaction: Interaction,
+): await run_slash(bot.commands.set_my_channels, interaction=interaction, channels="off")
 
 
 @dc.slash_command(name='my_channels', description='Show your currently linked queue channels.', **guild_kwargs)
