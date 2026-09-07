@@ -1,48 +1,51 @@
 # -*- coding: utf-8 -*-
-""" Per-player default queue selection. Lets a player set which queues a bare
-	=j / ++ (no queue names given) should add them to on a given channel --
-	e.g. both "comp" and "casual" every time -- instead of just the channel's
-	own default queue(s). Off by default: with nothing set, =j behaves
-	exactly as it always has (bot/commands/queues.py:add falls back to the
-	channel's default queues when this returns None or resolves to nothing).
+""" Per-player channel linking. Lets a player link two or more queue channels
+	(e.g. #comp and #casual) so a bare =j / ++ (no queue names given) in one
+	also joins them in the others, and a bare =l / -- in one also leaves the
+	others -- instead of only ever touching the channel the command was typed
+	in. Off by default: with nothing set, =j/=l behave exactly as they always
+	have (bot/commands/queues.py checks get_linked_channels and no-ops when
+	it's empty).
 
-	Deliberately does not change =l / -- (remove): a bare removal already
-	pops the author from every queue they're currently added to, regardless
-	of how they got added, so multi-queue joins are already cleanly undone. """
+	One flat group per player (not per-channel-pair): channel ids are globally
+	unique on Discord, so a single row is enough to cover however many
+	channels a player links together. """
 
 from core.database import db
 
 db.ensure_table(dict(
-	tname="player_default_queues",
+	tname="player_linked_channels",
 	columns=[
-		dict(cname="channel_id", ctype=db.types.int),
 		dict(cname="user_id", ctype=db.types.int),
-		dict(cname="queues", ctype=db.types.str),  # comma-separated lowercase queue names
+		dict(cname="channels", ctype=db.types.str),  # comma-separated channel ids
 	],
-	primary_keys=["channel_id", "user_id"]
+	primary_keys=["user_id"]
 ))
 
 
-async def get_default(channel_id, user_id):
-	""" Returns a list of lowercase queue names the player wants =j to use on
-		this channel, or None if they haven't set one. """
-	row = await db.select_one(
-		['queues'], 'player_default_queues', where=dict(channel_id=channel_id, user_id=user_id)
-	)
-	if not row or not row['queues']:
-		return None
-	return [q for q in row['queues'].split(",") if q]
+async def get_linked_channels(user_id):
+	""" Returns a list of int channel ids this player has linked (their own
+		channel included), or an empty list if they haven't linked anything. """
+	row = await db.select_one(['channels'], 'player_linked_channels', where=dict(user_id=user_id))
+	if not row or not row['channels']:
+		return []
+	return [int(c) for c in row['channels'].split(",") if c]
 
 
-async def set_default(channel_id, user_id, queue_names):
-	""" queue_names: list of (lowercase, already-resolved) queue names. An
-		empty list clears the preference, reverting to the channel default. """
-	value = ",".join(sorted(set(queue_names)))
-	if await db.select_one(
-		['channel_id'], 'player_default_queues', where=dict(channel_id=channel_id, user_id=user_id)
-	) is None:
-		await db.insert('player_default_queues', dict(channel_id=channel_id, user_id=user_id, queues=value))
+async def add_linked_channels(user_id, channel_ids):
+	""" Adds channel_ids to the player's existing group (union, not replace). """
+	current = set(await get_linked_channels(user_id))
+	current.update(channel_ids)
+	await _save(user_id, current)
+
+
+async def clear_linked_channels(user_id):
+	await _save(user_id, set())
+
+
+async def _save(user_id, channel_ids):
+	value = ",".join(str(c) for c in sorted(channel_ids))
+	if await db.select_one(['user_id'], 'player_linked_channels', where=dict(user_id=user_id)) is None:
+		await db.insert('player_linked_channels', dict(user_id=user_id, channels=value))
 	else:
-		await db.update(
-			'player_default_queues', dict(queues=value), keys=dict(channel_id=channel_id, user_id=user_id)
-		)
+		await db.update('player_linked_channels', dict(channels=value), keys=dict(user_id=user_id))
