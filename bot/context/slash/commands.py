@@ -638,7 +638,7 @@ async def _dbs(
 ): await run_slash(bot.commands.dbs_leaderboard, interaction=interaction)
 
 
-@soracle_slash(name='dfa', description='Top DFA killers, attempts, and returns this month.', **guild_kwargs)
+@soracle_slash(name='dfa', description='Top DFA killers and return kills this month.', **guild_kwargs)
 async def _dfa(
 		interaction: Interaction,
 ): await run_slash(bot.commands.dfa_leaderboard, interaction=interaction)
@@ -656,7 +656,7 @@ async def _deaths(
 ): await run_slash(bot.commands.deaths_leaderboard, interaction=interaction)
 
 
-@soracle_slash(name='caps', description='Top 5 best cap conversion since tracking began.', **guild_kwargs)
+@soracle_slash(name='caps', description='Top 5 best cap conversion this month.', **guild_kwargs)
 async def _caps(
 		interaction: Interaction,
 ): await run_slash(bot.commands.caps_leaderboard, interaction=interaction)
