@@ -575,10 +575,10 @@ class QueueChannel:
 		if self.cfg.whitelist_role and self.cfg.whitelist_role not in member.roles:
 			raise bot.Exc.PermissionError(self.gt("You are not allowed to add to queues on this channel."))
 
-		ban_left, phrase = await bot.noadds.get_user(ctx, member)
-		if ban_left:
-			raise bot.Exc.PermissionError(self.gt("You have been banned, `{duration}` left.").format(
-				duration=seconds_to_str(ban_left)
+		games_left, phrase = await bot.noadds.get_user(ctx, member)
+		if games_left:
+			raise bot.Exc.PermissionError(self.gt("You have been banned, `{n}` game{s} left.").format(
+				n=games_left, s="" if games_left == 1 else "s"
 			))
 
 		if any((member in m.players for m in bot.active_matches)):
