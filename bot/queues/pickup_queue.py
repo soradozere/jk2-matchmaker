@@ -143,6 +143,19 @@ class PickupQueue:
 					"An admin can type =manual to switch to manual picks, and =rebalance to auto-balance again."
 				])
 			),
+			Variables.BoolVar(
+				"post_balance_suggestions",
+				display="Post balance suggestions",
+				section="Teams",
+				default=1,
+				notnull=True,
+				description="\n".join([
+					"With 'Auto balance' off, automatically post Soracle's balance suggestions",
+					"alongside the draft-stage message for a full 12-player match, so captains",
+					"can copy one into manual picks. Turn off to draft with no suggestions posted",
+					"-- =options still works on demand either way."
+				])
+			),
 			Variables.StrVar(
 				"pick_order",
 				display="Teams picking order",
@@ -365,6 +378,7 @@ class PickupQueue:
 			no_captain_role_id=self.cfg.no_captain_role.id if self.cfg.no_captain_role else None,
 			pick_teams=self.cfg.pick_teams, pick_order=self.cfg.pick_order,
 			soracle_balance=self.cfg.soracle_balance,
+			post_balance_suggestions=self.cfg.post_balance_suggestions,
 			maps=[i['name'] for i in self.cfg.maps], vote_maps=self.cfg.vote_maps,
 			map_count=self.cfg.map_count, check_in_timeout=self.cfg.check_in_timeout,
 			check_in_discard=self.cfg.check_in_discard, check_in_discard_immediately=self.cfg.check_in_discard_immediately,

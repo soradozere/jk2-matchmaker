@@ -35,7 +35,7 @@ class Match:
 		team_size=1, pick_captains="no captains", captains_role_id=None, no_captain_role_id=None, pick_teams="draft",
 		pick_order=None, maps=[], vote_maps=0, map_count=0, check_in_timeout=0,
 		check_in_discard=True, check_in_discard_immediately=True, match_lifetime=3*60*60, start_msg=None, server=None,
-		show_streamers=True, soracle_balance=False
+		show_streamers=True, soracle_balance=False, post_balance_suggestions=True
 	)
 
 	class Team(list):
@@ -319,8 +319,9 @@ class Match:
 			elif self.state == self.DRAFT:
 				await self.draft.start(ctx)
 				# With the interactive menu off, auto-post Soracle's suggestions for a
-				# full 12-player match so captains can copy them into manual picks.
-				if not self.cfg['soracle_balance']:
+				# full 12-player match so captains can copy them into manual picks --
+				# unless the queue's turned that off too (=options still works on demand).
+				if not self.cfg['soracle_balance'] and self.cfg['post_balance_suggestions']:
 					await self.post_balance_suggestions(ctx)
 			elif self.state == self.WAITING_REPORT:
 				await self.start_waiting_report(ctx)
