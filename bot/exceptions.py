@@ -7,6 +7,9 @@ class Exceptions:
 	class PermissionError(PubobotException):
 		pass
 
+	class BlacklistedError(PermissionError):
+		title = None  # the message says it all; no heading over it
+
 	class SyntaxError(PubobotException):
 		pass
 

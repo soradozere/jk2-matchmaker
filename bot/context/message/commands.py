@@ -75,7 +75,7 @@ async def on_message(message):
 		try:
 			await f(ctx, *args)
 		except bot.Exc.PubobotException as e:
-			await ctx.error(str(e), title=e.__class__.__name__)
+			await ctx.error(str(e), title=getattr(e, "title", e.__class__.__name__))
 		except Exception as e:
 			tb = traceback.format_exc()
 			# Surface the traceback tail in Discord so crashes can be debugged without
