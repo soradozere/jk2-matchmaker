@@ -159,6 +159,7 @@ async def sub_force(ctx, player1: Member, player2: Member):
 		raise bot.Exc.NotFoundError(ctx.qc.gt("Specified user is not in a match."))
 	if any((player2 in m.players for m in bot.active_matches)):
 		raise bot.Exc.InMatchError(ctx.qc.gt("Specified user is in an active match."))
+	bot.blacklist.check(player2)
 
 	await match.draft.sub_for(ctx, player1, player2, force=True)
 
