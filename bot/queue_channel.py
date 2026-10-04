@@ -569,7 +569,6 @@ class QueueChannel:
 
 	async def check_allowed_to_add(self, ctx, member, queue=None):
 		""" raises exception if not allowed, returns phrase string or None if allowed """
-		bot.blacklist.check(member)
 
 		if self.cfg.blacklist_role and self.cfg.blacklist_role in member.roles:
 			raise bot.Exc.PermissionError(self.gt("You are not allowed to add to queues on this channel."))
