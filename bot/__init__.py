@@ -11,7 +11,6 @@ from .match.match import Match
 from .expire import expire
 from .stats import stats
 from .stats.noadds import noadds
-from . import blacklist
 from .exceptions import Exceptions as Exc
 from . import jk2_servers
 from . import wrapped

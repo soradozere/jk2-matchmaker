@@ -420,9 +420,6 @@ class PickupQueue:
 			)
 
 	async def add_member(self, ctx, member):
-		# Here as well as in QueueChannel.check_allowed_to_add: a moderator's
-		# add_player comes straight to this method and skips that check.
-		bot.blacklist.check(member)
 		if (
 			self.cfg.blacklist_role and self.cfg.blacklist_role in member.roles
 			or self.cfg.whitelist_role and self.cfg.whitelist_role not in member.roles
