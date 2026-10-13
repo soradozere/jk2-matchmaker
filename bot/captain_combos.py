@@ -40,19 +40,20 @@ COMBOS = [
 	("Interlude", "Ultra", True, None),
 	("Interlude", "Original", True, None),
 	("Interlude", "Shax", True, None),
-	("Interlude", "Twinblade", True, None),
+	("Interlude", "Twinblade", False, "Twinblade"),
 	("Interlude", "Cheese", False, "Cheese"),
+	("Interlude", "Arhont", False, "Arhont"),
 
 	("Original", "Cooky", True, None),
 	("Original", "Shax", True, None),
-	("Original", "Twinblade", True, None),
+	("Original", "Twinblade", False, "Twinblade"),
 	("Original", "Suvix", False, "Suvix"),
 
 	("Cheese", "Arhont", True, None),
 	("Cheese", "Ultra", True, None),
 	("Cheese", "Andrew", False, "Andrew"),
 
-	("Suvix", "Twinblade", False, "Suvix"),
+	("Suvix", "Twinblade", True, None),
 	("Suvix", "Retpecs", True, None),
 	("Suvix", "Shax", True, None),
 	("Suvix", "Jin", True, None),
@@ -61,7 +62,7 @@ COMBOS = [
 	("Shax", "Retpecs", True, None),
 
 	("Twinblade", "Andrew", True, None),
-	("Twinblade", "Jin", False, "Jin"),
+	("Twinblade", "Jin", True, None),
 	("Twinblade", "Retpecs", True, None),
 
 	("Arhont", "Andrew", True, None),
@@ -69,17 +70,11 @@ COMBOS = [
 
 	("Retpecs", "Jin", True, None),
 
-	("Jin", "Glempa", True, None),
-	("Jin", "Phoenix", True, None),
+	("Jin", "Phoenix", False, "Phoenix"),
 	("Jin", "Andrew", True, None),
-	("Jin", "Xan", True, None),
-	("Jin", "Eze", False, "Eze"),
+	("Jin", "Xan", False, "Xan"),
 
-	("Phoenix", "Glempa", True, None),
 	("Phoenix", "Xan", True, None),
-
-	("Glempa", "Xan", True, None),
-	("Glempa", "Luke", True, None),
 
 	("Canon", "Giraffe", True, None),
 	("Canon", "Eze", True, None),
@@ -91,16 +86,13 @@ COMBOS = [
 	("Xan", "Millhouse", True, None),
 	("Xan", "Downfall", False, "Downfall"),
 
-	("Eze", "Yuki", True, None),
+	("Eze", "Yuki", False, "Eze"),
 	("Eze", "Levi", True, None),
 	("Eze", "Giraffe", True, None),
 
 	("Giraffe", "Levi", True, None),
-	("Giraffe", "Yuki", True, None),
 
-	("Millhouse", "Downfall", True, None),
-
-	("Levi", "Yuki", True, None),
+	("Levi", "Yuki", False, "Levi"),
 
 	("Sora", "Downfall", True, None),
 	("Sora", "Slimm", True, None),
@@ -109,6 +101,8 @@ COMBOS = [
 	("Downfall", "Slimm", True, None),
 
 	("Sora", "Devy", False, "Devy"),
+	("Sora", "Vee", False, "Vee"),
+	("Vee", "Devy", True, None),
 ]
 
 
