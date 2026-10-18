@@ -146,8 +146,10 @@ def escape_cb(string):
 
 
 def get_nick(user):
-	""" Remove rating tag and text formatting characters """
-	string = user.nick or user.name
+	""" Remove rating tag and text formatting characters. Falls back from the
+		server nickname to the account-wide display name before the bare
+		username ("vee6655"), which most people never show anywhere. """
+	string = getattr(user, 'nick', None) or getattr(user, 'global_name', None) or user.name
 	if x := re.match(r"^\[\d+\] (.+)", string):
 		string = x.group(1)
 	return escape_cb(string)
