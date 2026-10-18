@@ -8,7 +8,6 @@ __all__ = [
 
 import re
 from math import ceil
-from random import choice
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -717,10 +716,6 @@ async def monthly_stats(ctx, player: Member = None):
 	if not target:
 		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
 
-	if _suvix_prank(ctx, target):
-		await ctx.reply(embed=_suvix_embed())
-		return
-
 	try:
 		data = await soracle.fetch_player_stats(target.id)
 	except bot.soracle.SoracleError as e:
@@ -797,32 +792,6 @@ RARITY_COLOUR = {
 	"legendary": 0xf5c542, "mythic": 0xeaeeff, "oneofone": 0xff2fb9,
 }
 
-# Suvix holds the only one-of-one crest in the community and checks on it via
-# =achievements/=stats roughly every ten minutes. When he looks himself up he
-# gets one of these instead of the page — the Monkey King bit. Rotates so it
-# doesn't go stale at his refresh rate. Nothing here is real: his crests and
-# stats are untouched on the site, this is purely a Discord-side gag.
-SUVIX_ID = 216608375771889666
-SUVIX_JABS = (
-	"Oooooh, oooh, ah ah ah! 🍌🍌🍌",
-	"Your achievements have been forfeit. Goodbye.",
-	"The Monkey King has lost his crown.",
-	"What are you looking for???",
-)
-
-
-def _suvix_prank(ctx, target):
-	""" True when Suvix is looking *himself* up. Keyed on caller and target both,
-		so he can still pull up other players, and so everyone else (admins
-		included) still sees his real page. """
-	return ctx.author.id == SUVIX_ID and target.id == SUVIX_ID
-
-
-def _suvix_embed():
-	""" The whole reply: one jab, no stats, no crests, no profile link. """
-	return Embed(description=f"## {choice(SUVIX_JABS)}", colour=Colour(0xf5c542))
-
-
 def _achievement_line(a):
 	""" One "🟡 **Batcher III** — Base cleans in a single match (**100+**)" row.
 		`requirement` is the current rank's threshold, sent only for tiered crests
@@ -842,10 +811,6 @@ async def achievements(ctx, player: Member = None):
 	target = ctx.author if not player else await ctx.get_member(player)
 	if not target:
 		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
-
-	if _suvix_prank(ctx, target):
-		await ctx.reply(embed=_suvix_embed())
-		return
 
 	try:
 		data = await soracle.fetch_achievements(target.id)

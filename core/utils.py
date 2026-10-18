@@ -117,9 +117,15 @@ def parse_duration(string):
 			elif part[-1] == 'M':
 				duration += val * 60 * 60 * 24 * 30
 			elif part[-1] == 'Y':
-				duration += val * 365 * 24 * 60
+				duration += val * 60 * 60 * 24 * 365
 			else:
 				raise ValueError()
+		# Absurd inputs ("527638172681756215s") overflow timedelta. Clamp to
+		# the largest duration it holds, so callers' own limits (e.g. the
+		# expire command's maximum) reject it with a normal message instead
+		# of crashing.
+		if duration >= timedelta.max.total_seconds():
+			return timedelta.max
 		return timedelta(seconds=int(duration))
 	else:
 		raise ValueError()
