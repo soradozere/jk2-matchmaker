@@ -9,7 +9,7 @@ from datetime import timedelta, datetime
 from random import randint
 from zoneinfo import ZoneInfo
 
-from nextcord import Embed, Colour
+from nextcord import Embed, Colour, Forbidden
 
 from core.utils import seconds_to_str, find, discord_table
 from core.database import db
@@ -265,12 +265,23 @@ async def commands_help(ctx, queue: str = None):
 async def set_nick(ctx, nick: str):
 	data = await db.select_one(
 		['rating'], 'qc_players',
-		where={'channel_id': ctx.author.id, 'user_id': ctx.author.id}
+		where={'channel_id': ctx.qc.rating.channel_id, 'user_id': ctx.author.id}
 	)
 	if not data or data['rating'] is None:
 		rating = ctx.qc.rating.init_rp
 	else:
 		rating = data['rating']
 
-	await ctx.author.edit(nick=f"[{rating}] " + nick)
+	# Discord never lets a bot rename the server owner, or anyone whose top
+	# role sits at or above the bot's own; both come back as a bare 403.
+	try:
+		await ctx.author.edit(nick=f"[{rating}] " + nick)
+	except Forbidden:
+		if ctx.author.id == ctx.channel.guild.owner_id:
+			raise bot.Exc.PermissionError(ctx.qc.gt(
+				"Discord doesn't let bots change the server owner's nickname. Change it yourself in Discord."
+			))
+		raise bot.Exc.PermissionError(ctx.qc.gt(
+			"I can't change your nickname: your highest role is above mine, or I'm missing the Manage Nicknames permission."
+		))
 	await ctx.ignore(ctx.qc.gt("Done."))
