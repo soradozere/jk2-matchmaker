@@ -1,4 +1,5 @@
 from nextcord import Embed, Colour, Streaming, Member
+from nextcord.utils import escape_markdown
 from core.client import dc
 from core.utils import get_nick, join_and
 from bot import soracle
@@ -29,6 +30,42 @@ class Embeds:
 				return f'{self.m.rank_str(p)}{p.mention}'
 			return f'`{self.m.rank_str(p)}`{p.mention}'
 		return p.mention
+
+	def _draft_line(self, p: Member):
+		""" One player per line on the draft embed: "nick [Rank]". Names are
+			escaped rather than wrapped in backticks, so underscores and
+			asterisks in nicks don't turn into formatting. """
+		nick = escape_markdown(get_nick(p))
+		if not self.m.ranked:
+			return nick
+		rank = self.m.rank_str(p).strip()
+		if self.m.qc.cfg.emoji_ranks:
+			return f"{rank} {nick}"
+		return f"{nick} [{rank}]"
+
+	def _pick_turns(self):
+		""" The current and next turn of the draft as [(team, picks), ...].
+			A turn is a run of the same letter in the pick order, so with
+			"abbab..." the second captain picks 2 in a row. The count shrinks
+			as picks are made mid-turn, and never exceeds the unpicked pool.
+			Mirrors Draft.pick: the last slot of the order is never a turn
+			(it's auto-assigned), and an empty order means free picking. """
+		order = self.m.draft.pick_order
+		step = len(self.m.teams[0]) + len(self.m.teams[1]) - 2
+		left = len(self.m.teams[2])
+		turns = []
+		while step < len(order) - 1 and left > 0 and len(turns) < 2:
+			team, run = order[step], 0
+			while step + run < len(order) and order[step + run] == team:
+				run += 1
+			picks = min(run, left)
+			turns.append((self.m.teams[team], picks))
+			step += run
+			left -= picks
+		return turns
+
+	def _picks_str(self, n):
+		return self.m.gt("1 pick") if n == 1 else self.m.gt("{n} picks").format(n=n)
 
 	def _team_avg_rating(self, team):
 		return sum((self.m.ratings[p.id] for p in team)) // (len(team) or 1)
@@ -89,29 +126,34 @@ class Embeds:
 			for t in self.m.teams[:2]
 		]
 		team_players = [
-			" \u200b ".join([
-				self._ranked_nick(p) for p in t
+			"\n".join([
+				self._draft_line(p) for p in t
 			]) if len(t) else self.m.gt("empty")
 			for t in self.m.teams[:2]
 		]
-		embed.add_field(name=teams_names[0], value=" \u200b ❲ \u200b " + team_players[0] + " \u200b ❳", inline=False)
-		embed.add_field(name=teams_names[1], value=" \u200b ❲ \u200b " + team_players[1] + " \u200b ❳\n\u200b", inline=False)
+		embed.add_field(name=teams_names[0], value=team_players[0] + "\n\u200b", inline=False)
+		embed.add_field(name=teams_names[1], value=team_players[1] + "\n\u200b", inline=False)
 
 		if len(self.m.teams[2]):
 			embed.add_field(
 				name=self.m.gt("Unpicked:"),
-				value="\n".join((
-					" \u200b " + self._ranked_nick(p)
-				) for p in self.m.teams[2]),
+				value="\n".join(self._draft_line(p) for p in self.m.teams[2]),
 				inline=False
 			)
 
 			if len(self.m.teams[0]) and len(self.m.teams[1]):
 				msg = self.m.gt("Pick players with `/pick @player` command.")
-				pick_step = len(self.m.teams[0]) + len(self.m.teams[1]) - 2
-				picker_team = self.m.teams[self.m.draft.pick_order[pick_step]] if pick_step < len(self.m.draft.pick_order)-1 else None
-				if picker_team:
-					msg += "\n" + self.m.gt("{member}'s turn to pick!").format(member=f"<@{picker_team[0].id}>")
+				turns = self._pick_turns()
+				if turns:
+					team, picks = turns[0]
+					msg += "\n" + self.m.gt("{member}'s turn to pick: **{picks}**").format(
+						member=f"<@{team[0].id}>", picks=self._picks_str(picks)
+					)
+				if len(turns) > 1:
+					team, picks = turns[1]
+					msg += "\n" + self.m.gt("Next: {member}, {picks}").format(
+						member=f"<@{team[0].id}>", picks=self._picks_str(picks)
+					)
 			else:
 				msg = self.m.gt("Type {cmd} to become a captain and start picking teams.").format(
 					cmd=f"`{self.m.qc.cfg.prefix}capfor {'/'.join((team.name.lower() for team in self.m.teams[:2]))}`"
