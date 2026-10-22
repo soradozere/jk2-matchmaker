@@ -32,16 +32,17 @@ class Embeds:
 		return p.mention
 
 	def _draft_line(self, p: Member):
-		""" One player per line on the draft embed: "nick [Rank]". Names are
-			escaped rather than wrapped in backticks, so underscores and
-			asterisks in nicks don't turn into formatting. """
-		nick = escape_markdown(get_nick(p))
+		""" One player per line on the draft embed: the name in bold, the rank
+			after it as a muted code tag, so the eye lands on names. Names are
+			escaped, so underscores and asterisks in nicks don't turn into
+			formatting. """
+		nick = f"**{escape_markdown(get_nick(p))}**"
 		if not self.m.ranked:
 			return nick
 		rank = self.m.rank_str(p).strip()
 		if self.m.qc.cfg.emoji_ranks:
 			return f"{rank} {nick}"
-		return f"{nick} [{rank}]"
+		return f"{nick} `{rank}`"
 
 	def _pick_turns(self):
 		""" The current and next turn of the draft as [(team, picks), ...].
