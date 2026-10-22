@@ -73,13 +73,29 @@ async def run_slash_coro(ctx: SlashContext, coro: Callable, **kwargs):
 	except bot.Exc.PubobotException as e:
 		await ctx.error(str(e), title=e.__class__.__name__)
 	except Exception as e:
-		await ctx.error(str(e), title="RuntimeError")
+		tb = traceback.format_exc()
+		# Same as text commands: the owner sees the traceback inline when they
+		# trip it, and is DM'd it when anyone else does -- otherwise a slash
+		# crash only ever reached the one person who saw the ephemeral error.
+		detail = str(e)
+		if ctx.author.id == cfg.DC_OWNER_ID:
+			detail = f"{str(e)}\n```\n{tb[-1500:]}\n```"
+		await ctx.error(detail, title="RuntimeError")
+		if ctx.author.id != cfg.DC_OWNER_ID:
+			try:
+				owner = dc.get_user(cfg.DC_OWNER_ID) or await dc.fetch_user(cfg.DC_OWNER_ID)
+				if owner:
+					await owner.send(
+						f"⚠️ `/{coro.__name__} {kwargs}` by {ctx.author} crashed:\n```\n{tb[-1800:]}\n```"[:2000]
+					)
+			except Exception:
+				pass
 		log.error("\n".join([
 			f"Error processing /slash command {coro.__name__}.",
-			f"QC: {ctx.channel.guild.name}>#{ctx.channel.name} ({qc.id}).",
+			f"QC: {ctx.channel.guild.name}>#{ctx.channel.name} ({getattr(ctx.qc, 'id', None)})",
 			f"Member: {ctx.author} ({ctx.author.id}).",
 			f"Kwargs: {kwargs}.",
-			f"Exception: {str(e)}. Traceback:\n{traceback.format_exc()}=========="
+			f"Exception: {str(e)}. Traceback:\n{tb}=========="
 		]))
 
 

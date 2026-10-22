@@ -1,7 +1,7 @@
 from nextcord import Embed, Colour, Streaming, Member
 from nextcord.utils import escape_markdown
 from core.client import dc
-from core.utils import get_nick, join_and
+from core.utils import join_and
 from bot import soracle
 
 
@@ -20,9 +20,9 @@ class Embeds:
 	def _ranked_nick(self, p: Member):
 		if self.m.ranked:
 			if self.m.qc.cfg.emoji_ranks:
-				return f'{self.m.rank_str(p)}`{get_nick(p)}`'
-			return f'`{self.m.rank_str(p)}{get_nick(p)}`'
-		return f'`{get_nick(p)}`'
+				return f'{self.m.rank_str(p)}`{self.m.display_name(p)}`'
+			return f'`{self.m.rank_str(p)}{self.m.display_name(p)}`'
+		return f'`{self.m.display_name(p)}`'
 
 	def _ranked_mention(self, p: Member):
 		if self.m.ranked:
@@ -32,16 +32,17 @@ class Embeds:
 		return p.mention
 
 	def _draft_line(self, p: Member):
-		""" One player per line on the draft embed: "nick [Rank]". Names are
-			escaped rather than wrapped in backticks, so underscores and
-			asterisks in nicks don't turn into formatting. """
-		nick = escape_markdown(get_nick(p))
+		""" One player per line on the draft embed: the name in bold, the rank
+			after it as a muted code tag, so the eye lands on names. Names are
+			escaped, so underscores and asterisks in nicks don't turn into
+			formatting. """
+		nick = f"**{escape_markdown(self.m.display_name(p))}**"
 		if not self.m.ranked:
 			return nick
 		rank = self.m.rank_str(p).strip()
 		if self.m.qc.cfg.emoji_ranks:
 			return f"{rank} {nick}"
-		return f"{nick} [{rank}]"
+		return f"{nick} `{rank}`"
 
 	def _pick_turns(self):
 		""" The current and next turn of the draft as [(team, picks), ...].
@@ -190,7 +191,7 @@ class Embeds:
 				ids = opt.get(ids_key) or []
 				names = result.get(names_key) or []
 				roster = " ".join(
-					f"`{get_nick(members[int(x)])}`" if x and int(x) in members else f"`{names[n] if n < len(names) else '?'}`"
+					f"`{self.m.display_name(members[int(x)])}`" if x and int(x) in members else f"`{names[n] if n < len(names) else '?'}`"
 					for n, x in enumerate(ids)
 				) or self.m.gt("empty")
 				rows.append(f"{team.emoji} {roster}")
@@ -250,7 +251,7 @@ class Embeds:
 					else:
 						ranked_team = sorted(t, key=lambda p: self.m.ratings[p.id], reverse=True)
 					roster = "\n".join(
-						"`{n}` `{label}`".format(n=n + 1, label=soracle_names.get(p.id) or get_nick(p))
+						"`{n}` `{label}`".format(n=n + 1, label=soracle_names.get(p.id) or self.m.display_name(p))
 						for n, p in enumerate(ranked_team)
 					) or self.m.gt("empty")
 					embed.add_field(name=name, value=roster, inline=True)

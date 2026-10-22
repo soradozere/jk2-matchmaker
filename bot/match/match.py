@@ -64,14 +64,16 @@ class Match:
 	async def new(cls, ctx, queue, players, **kwargs):
 		# Create the Match object
 		ratings = {p['user_id']: p['rating'] for p in await ctx.qc.rating.get_players((p.id for p in players))}
+		# Soracle names label players in the match embeds whatever the captain
+		# mode; tiers only matter to the tier-based captain modes.
 		tiers, soracle_names = {}, {}
-		if kwargs.get('pick_captains') in ("fair pairs by tier", "captain combos") and soracle.enabled():
+		if soracle.enabled():
 			try:
 				summaries = await soracle.fetch_player_summaries(p.id for p in players)
 				tiers = {i: s['tier'] for i, s in summaries.items() if s.get('tier') is not None}
 				soracle_names = {i: s['name'] for i, s in summaries.items() if s.get('name')}
 			except soracle.SoracleError as e:
-				log.error(f"Match.new: couldn't fetch Soracle data for captain selection, falling back to Elo: {e}")
+				log.error(f"Match.new: couldn't fetch Soracle names/tiers, falling back to Discord names and Elo: {e}")
 		match_id = await bot.stats.next_match()
 		match = cls(match_id, queue, ctx.qc, players, ratings, tiers=tiers, soracle_names=soracle_names, **kwargs)
 		# Prepare the Match object
@@ -231,6 +233,12 @@ class Match:
 		candidates = sorted(pool, key=lambda p: key_map[p.id], reverse=True)
 		i = random.randrange(len(candidates) - 1)
 		return [candidates[i], candidates[i + 1]]
+
+	def display_name(self, p):
+		""" A player's Soracle name, so match messages read the same as the
+			site; their Discord name if they aren't linked (or Soracle was
+			down when the match formed, or they were added mid-draft). """
+		return self.soracle_names.get(p.id) or get_nick(p)
 
 	def _tier_or_rating_key(self, pool):
 		# Falls back to Elo if tier data didn't come through for everyone in the
@@ -465,9 +473,9 @@ class Match:
 
 		if len(winners) == 1 and len(losers) == 1:
 			p = winners[0]
-			msg += f"\n1. {get_nick(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}"
+			msg += f"\n1. {self.display_name(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}"
 			p = losers[0]
-			msg += f"\n2. {get_nick(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}"
+			msg += f"\n2. {self.display_name(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}"
 		else:
 			n = 0
 			for team in (winners, losers):
@@ -475,7 +483,7 @@ class Match:
 				avg_af = int(sum((after[p.id]['rating'] for p in team))/len(team))
 				msg += f"\n{n}. {team.name} {avg_bf} ⟼ {avg_af}\n"
 				msg += "\n".join(
-					(f"> {get_nick(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}" for p in team)
+					(f"> {self.display_name(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}" for p in team)
 				)
 				n += 1
 		msg += "```"
@@ -502,7 +510,7 @@ class Match:
 			await bot.stats.register_match_unranked(ctx, self)
 
 	def print(self):
-		return f"> *({self.id})* **{self.queue.name}** | `{join_and([get_nick(p) for p in self.players])}`"
+		return f"> *({self.id})* **{self.queue.name}** | `{join_and([self.display_name(p) for p in self.players])}`"
 
 	async def cancel(self, ctx):
 		if self.check_in.message and self.check_in.message.id in bot.waiting_reactions.keys():
