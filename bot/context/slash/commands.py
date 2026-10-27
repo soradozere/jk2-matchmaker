@@ -840,6 +840,47 @@ async def _youtube_config(
 ): await run_slash(bot.commands.youtube_config, interaction=interaction)
 
 
+@dc.slash_command(name='event_add', description='Mod: plan an event — announces it with @everyone and lets players sign up for a DM reminder.', **guild_kwargs)
+async def _event_add(
+		interaction: Interaction,
+		name: str = SlashOption(name="name", description="What's happening, e.g. Manhunt night."),
+		date: str = SlashOption(name="date", description="Pick a day (or type YYYY-MM-DD)."),
+		time: str = SlashOption(name="time", description="UK time, e.g. 20:00 or 8pm."),
+		note: str = SlashOption(name="note", description="Extra info, e.g. server IP.", required=False, default=None)
+): await run_slash(bot.commands.event_add, interaction=interaction, name=name, date=date, time=time, note=note)
+_event_add.on_autocomplete("date")(autocomplete.event_dates)
+
+
+@dc.slash_command(name='events', description='List the planned events.', **guild_kwargs)
+async def _events(
+		interaction: Interaction,
+): await run_slash(bot.commands.events, interaction=interaction)
+
+
+@dc.slash_command(name='event_sub', description='Get a DM an hour before an event starts.', **guild_kwargs)
+async def _event_sub(
+		interaction: Interaction,
+		event: int = SlashOption(name="event", description="Which event (optional if only one is planned).", required=False, default=None)
+): await run_slash(bot.commands.event_sub, interaction=interaction, event_id=event)
+_event_sub.on_autocomplete("event")(autocomplete.upcoming_events)
+
+
+@dc.slash_command(name='event_unsub', description='Stop the reminder DM for an event.', **guild_kwargs)
+async def _event_unsub(
+		interaction: Interaction,
+		event: int = SlashOption(name="event", description="Which event (optional if only one is planned).", required=False, default=None)
+): await run_slash(bot.commands.event_unsub, interaction=interaction, event_id=event)
+_event_unsub.on_autocomplete("event")(autocomplete.upcoming_events)
+
+
+@dc.slash_command(name='event_remove', description='Mod: cancel an event.', **guild_kwargs)
+async def _event_remove(
+		interaction: Interaction,
+		event: int = SlashOption(name="event", description="Which event (optional if only one is planned).", required=False, default=None)
+): await run_slash(bot.commands.event_remove, interaction=interaction, event_id=event)
+_event_remove.on_autocomplete("event")(autocomplete.upcoming_events)
+
+
 @dc.slash_command(name='help', description='Show the everyday commands.', **guild_kwargs)
 async def _help(
 		interaction: Interaction,

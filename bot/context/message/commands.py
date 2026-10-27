@@ -178,6 +178,51 @@ async def _youtube_config(ctx: MessageContext, args: str = None):
 	await bot.commands.youtube_config(ctx)
 
 
+def _event_number(ctx: MessageContext, args: str, command: str):
+	""" The event number from a command argument; None when left off. """
+	if not args or not args.strip():
+		return None
+	try:
+		return int(args.strip().lstrip('#'))
+	except ValueError:
+		raise bot.Exc.SyntaxError(f"Usage: {ctx.qc.cfg.prefix}{command} __event number__ (see {ctx.qc.cfg.prefix}events)")
+
+
+@message_command('event_add')
+async def _event_add(ctx: MessageContext, args: str = None):
+	usage = "Usage: {p}event_add __YYYY-MM-DD__ __HH:MM__ __name__ [| __note__]  (UK time)  or  {p}event_add __<t:...>__ __name__ [| __note__]".format(
+		p=ctx.qc.cfg.prefix
+	)
+	text, _, note = (args or "").partition('|')
+	tokens = text.split()
+	if tokens and (timestamp := bot.events_calendar.parse_timestamp(tokens[0])) is not None:
+		await bot.commands.event_add(ctx, name=" ".join(tokens[1:]), timestamp=timestamp, note=note)
+	elif len(tokens) >= 3:
+		await bot.commands.event_add(ctx, name=" ".join(tokens[2:]), date=tokens[0], time=tokens[1], note=note)
+	else:
+		raise bot.Exc.SyntaxError(usage)
+
+
+@message_command('events')
+async def _events(ctx: MessageContext, args: str = None):
+	await bot.commands.events(ctx)
+
+
+@message_command('event_sub')
+async def _event_sub(ctx: MessageContext, args: str = None):
+	await bot.commands.event_sub(ctx, event_id=_event_number(ctx, args, 'event_sub'))
+
+
+@message_command('event_unsub')
+async def _event_unsub(ctx: MessageContext, args: str = None):
+	await bot.commands.event_unsub(ctx, event_id=_event_number(ctx, args, 'event_unsub'))
+
+
+@message_command('event_remove')
+async def _event_remove(ctx: MessageContext, args: str = None):
+	await bot.commands.event_remove(ctx, event_id=_event_number(ctx, args, 'event_remove'))
+
+
 @message_command('urban')
 async def _urban(ctx: MessageContext, args: str = None):
 	await bot.commands.urban(ctx, term=args)
