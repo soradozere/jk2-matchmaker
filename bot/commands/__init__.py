@@ -8,4 +8,5 @@ from .soracle import *
 from .pug import *
 from .welcome import *
 from .youtube import *
+from .events import *
 from .levelup import *

@@ -26,6 +26,14 @@ async def queue_variables(interaction: Interaction, variable: str) -> List[str]:
 	return []
 
 
+async def event_dates(interaction: Interaction, date: str) -> dict:
+	return bot.events_calendar.date_choices(date or "")
+
+
+async def upcoming_events(interaction: Interaction, event: str) -> dict:
+	return {f"#{e['event_id']} · {e['name']}"[:100]: e['event_id'] for e in await bot.events_calendar.upcoming()}
+
+
 async def match_ids(interaction: Interaction, match_id: str) -> List[int]:
 	if (qc := bot.queue_channels.get(interaction.channel_id)) is None:
 		return []
