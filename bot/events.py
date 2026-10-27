@@ -28,13 +28,13 @@ async def on_think(frame_time):
 			bot.active_matches.remove(match)
 			break
 	await bot.expire.think(frame_time)
-	await bot.noadds.think(frame_time)
 	await bot.stats.jobs.think(frame_time)
 	await bot.expire_auto_ready(frame_time)
 	await bot.jk2_servers.think(frame_time)
 	await bot.wrapped.think(frame_time)
 	await bot.youtube.think(frame_time)
 	await bot.events_calendar.think(frame_time)
+	await bot.levelup.think(frame_time)
 
 
 # Forward end-of-match scoreboard CSVs posted in a watched channel to Soracle's

@@ -1,10 +1,11 @@
 __all__ = [
 	'show_matches', 'show_teams', 'set_ready', 'sub_me', 'sub_for', 'put',
 	'sub_force', 'cap_me', 'cap_for', 'pick', 'report_admin', 'report', 'report_manual',
-	'rebalance', 'manual', 'remove_match_player', 'force_start_match'
+	'rebalance', 'manual', 'remove_match_player', 'force_start_match', 'show_captain_combos',
+	'set_pick_order'
 ]
 
-from nextcord import Member
+from nextcord import Member, DiscordException, Embed, Colour
 from typing import List
 from functools import wraps
 
@@ -12,6 +13,8 @@ from core.utils import get, find
 
 import bot
 from bot import soracle
+from bot import captain_combos
+from bot.match.draft import PICK_ORDER_PRESETS
 
 
 def author_match(coro):
@@ -35,6 +38,101 @@ async def show_matches(ctx):
 async def show_teams(ctx, match: bot.Match):
 	if match.state not in [bot.Match.DRAFT, bot.Match.WAITING_REPORT]:
 		raise bot.Exc.MatchStateError('Match must be on draft or waiting report state.')
+	if match.state == bot.Match.WAITING_REPORT:
+		# Teams are locked in past this point -- show the same styled roster the
+		# "has started" post used, not the draft-stage embed (=teams was reverting
+		# to the old plain-nick style after the bot had already picked).
+		try:
+			await ctx.notice(embed=match.embeds.final_message())
+		except DiscordException:
+			pass
+	else:
+		await match.draft.print(ctx)
+
+
+async def show_captain_combos(ctx):
+	""" Shows which captain combos are actually possible right now -- not the
+		whole reference list. This is most useful once a match has actually
+		formed (draft stage, deciding who should captain), at which point
+		everyone's already moved out of the queue and into the match -- so an
+		active match the author is in takes priority over the pre-fill queue,
+		which by then is empty anyway. Available as both =combos (public) and
+		/combos (private/ephemeral) -- the live filtering keeps the output
+		short enough that =combos being public is fine. """
+	if (match := find(lambda m: m.qc == ctx.qc and ctx.author in m.players, bot.active_matches)) is not None:
+		pool_players = {p.id: p for p in match.players}
+	else:
+		active_queues = [q for q in ctx.qc.queues if len(q.queue)]
+		pool_players = {p.id: p for q in active_queues for p in q.queue}
+	if not pool_players:
+		raise bot.Exc.NotFoundError(
+			ctx.qc.gt("Nobody's queued right now -- combos are shown based on who's currently added.")
+		)
+
+	try:
+		summaries = await soracle.fetch_player_summaries(pool_players.keys())
+	except soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+	pool_names = {i: s['name'] for i, s in summaries.items() if s.get('name')}
+
+	perfect, conditional = captain_combos.possible_pairs(pool_names)
+
+	embed = Embed(
+		title="Captain combos — right now",
+		colour=Colour(0x50e3c2),
+		description=(
+			"Only pairs where **both** players are currently in queue. Perfect Match is tried "
+			"first (random pick if several fit); Conditional only kicks in if no Perfect Match "
+			"is available, and the named player gets first pick."
+		)
+	)
+	embed.add_field(
+		name=f"⚖️ Perfect Match ({len(perfect)})",
+		value="\n".join(f"{name_a} vs {name_b}" for _, _, name_a, name_b, _ in perfect)
+		or ctx.qc.gt("None possible right now."),
+		inline=False
+	)
+	embed.add_field(
+		name=f"🎯 Conditional ({len(conditional)})",
+		value="\n".join(f"{name_a} vs {name_b} — **{fp}** gets first pick" for _, _, name_a, name_b, fp in conditional)
+		or ctx.qc.gt("None possible right now."),
+		inline=False
+	)
+	# ephemeral only means anything for a slash reply -- MessageContext.reply
+	# has no such concept (a plain Discord message can't be private).
+	if hasattr(ctx, 'interaction'):
+		await ctx.reply(embed=embed, ephemeral=True)
+	else:
+		await ctx.reply(embed=embed)
+
+
+async def set_pick_order(ctx, order: str = None):
+	""" Mod-only: change the CURRENT draft's pick order (who picks when)
+		without touching the queue's own default pick_order config. Not
+		@author_match -- a mod fixing this up is often not a player in the
+		match themselves, so it looks for the channel's in-progress draft
+		instead of requiring the caller to be one of its players. """
+	ctx.check_perms(ctx.Perms.MODERATOR)
+	preset_list = ", ".join(PICK_ORDER_PRESETS)
+	if not order:
+		raise bot.Exc.SyntaxError(ctx.qc.gt(
+			"Usage: {p}set_pick_order __preset-or-ab-string__ (presets: {presets})"
+		).format(p=ctx.qc.cfg.prefix, presets=preset_list))
+
+	if (match := find(lambda m: m.qc == ctx.qc and m.state == m.DRAFT, bot.active_matches)) is None:
+		raise bot.Exc.MatchStateError(ctx.qc.gt("No draft in progress on this channel."))
+
+	key = order.strip().lower()
+	sequence = PICK_ORDER_PRESETS.get(key, key)
+	if not sequence or set(sequence) - set("ab"):
+		raise bot.Exc.SyntaxError(ctx.qc.gt(
+			"Not a known preset ({presets}) or a valid a/b order (only a and b characters)."
+		).format(presets=preset_list))
+
+	match.draft.set_pick_order(sequence)
+	await ctx.success(ctx.qc.gt("Pick order for this draft is now `{order}`{label}.").format(
+		order=sequence, label=f" ({key})" if key in PICK_ORDER_PRESETS else ""
+	))
 	await match.draft.print(ctx)
 
 

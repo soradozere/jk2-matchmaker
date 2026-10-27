@@ -117,9 +117,15 @@ def parse_duration(string):
 			elif part[-1] == 'M':
 				duration += val * 60 * 60 * 24 * 30
 			elif part[-1] == 'Y':
-				duration += val * 365 * 24 * 60
+				duration += val * 60 * 60 * 24 * 365
 			else:
 				raise ValueError()
+		# Absurd inputs ("527638172681756215s") overflow timedelta. Clamp to
+		# the largest duration it holds, so callers' own limits (e.g. the
+		# expire command's maximum) reject it with a normal message instead
+		# of crashing.
+		if duration >= timedelta.max.total_seconds():
+			return timedelta.max
 		return timedelta(seconds=int(duration))
 	else:
 		raise ValueError()
@@ -140,8 +146,10 @@ def escape_cb(string):
 
 
 def get_nick(user):
-	""" Remove rating tag and text formatting characters """
-	string = user.nick or user.name
+	""" Remove rating tag and text formatting characters. Falls back from the
+		server nickname to the account-wide display name before the bare
+		username ("vee6655"), which most people never show anywhere. """
+	string = getattr(user, 'nick', None) or getattr(user, 'global_name', None) or user.name
 	if x := re.match(r"^\[\d+\] (.+)", string):
 		string = x.group(1)
 	return escape_cb(string)

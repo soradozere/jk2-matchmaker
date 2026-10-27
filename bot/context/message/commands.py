@@ -113,6 +113,16 @@ async def _remove(ctx: MessageContext, args: str = None):
 	await bot.commands.remove(ctx, queues=args)
 
 
+@message_command('set_my_channels')
+async def _set_my_channels(ctx: MessageContext, args: str = None):
+	await bot.commands.set_my_channels(ctx, channels=args)
+
+
+@message_command('my_channels')
+async def _my_channels(ctx: MessageContext, args: str = None):
+	await bot.commands.my_channels(ctx)
+
+
 @message_command('who')
 async def _remove(ctx: MessageContext, args: str = None):
 	await bot.commands.who(ctx, queues=args)
@@ -131,6 +141,11 @@ async def _commands_help(ctx: MessageContext, args: str = None):
 @message_command('teams')
 async def _teams(ctx: MessageContext, args: str = None):
 	await bot.commands.show_teams(ctx)
+
+
+@message_command('combos')
+async def _combos(ctx: MessageContext, args: str = None):
+	await bot.commands.show_captain_combos(ctx)
 
 
 @message_command('tz')
@@ -221,6 +236,21 @@ async def _event_unsub(ctx: MessageContext, args: str = None):
 @message_command('event_remove')
 async def _event_remove(ctx: MessageContext, args: str = None):
 	await bot.commands.event_remove(ctx, event_id=_event_number(ctx, args, 'event_remove'))
+
+
+@message_command('set_levelup_channel')
+async def _set_levelup_channel(ctx: MessageContext, args: str = None):
+	await bot.commands.set_levelup_channel(ctx, channel_name=args)
+
+
+@message_command('set_levelup_enabled')
+async def _set_levelup_enabled(ctx: MessageContext, args: str = None):
+	await bot.commands.set_levelup_enabled(ctx, state=args)
+
+
+@message_command('levelup_config')
+async def _levelup_config(ctx: MessageContext, args: str = None):
+	await bot.commands.levelup_config(ctx)
 
 
 @message_command('urban')
@@ -409,6 +439,12 @@ async def _bc(ctx: MessageContext, args: str = None):
 	await bot.commands.bc_leaderboard(ctx)
 
 
+@soracle_command('impact')
+async def _impact(ctx: MessageContext, args: str = None):
+	page = int(args) if args and args.isdigit() else None
+	await bot.commands.impact_leaderboard(ctx, page=page or 1)
+
+
 @soracle_command('doom')
 async def _doom(ctx: MessageContext, args: str = None):
 	await bot.commands.doom_leaderboard(ctx)
@@ -520,6 +556,11 @@ async def _cancel_match(ctx: MessageContext, args: str = None):
 	if not args or not args.isdigit():
 		raise bot.Exc.SyntaxError(f"Usage: {ctx.qc.cfg.prefix}cancel_match __match_id__")
 	await bot.commands.report_admin(ctx, match_id=int(args), abort=True)
+
+
+@message_command('set_pick_order')
+async def _set_pick_order(ctx: MessageContext, args: str = None):
+	await bot.commands.set_pick_order(ctx, order=args)
 
 
 @message_command('promote')

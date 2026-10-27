@@ -5,6 +5,8 @@ import random
 from nextcord import DiscordException
 
 import bot
+from bot import soracle
+from bot import captain_combos
 from core.utils import find, get, iter_to_dict, join_and, get_nick
 from core.console import log
 from core.client import dc
@@ -33,7 +35,7 @@ class Match:
 		team_size=1, pick_captains="no captains", captains_role_id=None, no_captain_role_id=None, pick_teams="draft",
 		pick_order=None, maps=[], vote_maps=0, map_count=0, check_in_timeout=0,
 		check_in_discard=True, check_in_discard_immediately=True, match_lifetime=3*60*60, start_msg=None, server=None,
-		show_streamers=True, soracle_balance=False
+		show_streamers=True, soracle_balance=False, post_balance_suggestions=True
 	)
 
 	class Team(list):
@@ -62,8 +64,18 @@ class Match:
 	async def new(cls, ctx, queue, players, **kwargs):
 		# Create the Match object
 		ratings = {p['user_id']: p['rating'] for p in await ctx.qc.rating.get_players((p.id for p in players))}
+		# Soracle names label players in the match embeds whatever the captain
+		# mode; tiers only matter to the tier-based captain modes.
+		tiers, soracle_names = {}, {}
+		if soracle.enabled():
+			try:
+				summaries = await soracle.fetch_player_summaries(p.id for p in players)
+				tiers = {i: s['tier'] for i, s in summaries.items() if s.get('tier') is not None}
+				soracle_names = {i: s['name'] for i, s in summaries.items() if s.get('name')}
+			except soracle.SoracleError as e:
+				log.error(f"Match.new: couldn't fetch Soracle names/tiers, falling back to Discord names and Elo: {e}")
 		match_id = await bot.stats.next_match()
-		match = cls(match_id, queue, ctx.qc, players, ratings, **kwargs)
+		match = cls(match_id, queue, ctx.qc, players, ratings, tiers=tiers, soracle_names=soracle_names, **kwargs)
 		# Prepare the Match object
 		match.maps = match.random_maps(match.cfg['maps'], match.cfg['map_count'], queue.last_maps)
 		match.init_captains(match.cfg['pick_captains'], match.cfg['captains_role_id'])
@@ -71,6 +83,10 @@ class Match:
 		if match.ranked:
 			match.states.append(match.WAITING_REPORT)
 		bot.active_matches.append(match)
+		# Every match that starts on this channel counts as one "game served"
+		# toward any active match-count ban here (bot/stats/noadds.py) --
+		# regardless of whether the banned player would've been in it.
+		await bot.noadds.tick_games(ctx.qc.id)
 
 	@classmethod
 	async def fake_ranked_match(cls, ctx, queue, qc, winners, losers, draw=False, **kwargs):
@@ -142,7 +158,7 @@ class Match:
 
 		bot.active_matches.append(match)
 
-	def __init__(self, match_id, queue, qc, players, ratings, **cfg):
+	def __init__(self, match_id, queue, qc, players, ratings, tiers=None, soracle_names=None, **cfg):
 
 		# Set parent objects and shorthands
 		self.queue = queue
@@ -159,6 +175,8 @@ class Match:
 		self.ranked = self.cfg['ranked'] and self.cfg['pick_teams'] != 'no teams'
 		self.players = list(players)
 		self.ratings = ratings
+		self.tiers = tiers or {}
+		self.soracle_names = soracle_names or {}
 		self.winner = None
 		self.scores = [0, 0]
 
@@ -209,14 +227,46 @@ class Match:
 				return eligible
 		return list(self.players)
 
+	def _closest_pair(self, pool, key_map):
+		""" A random adjacent pair on a skill-sorted list -- close to each other
+			in skill, but not necessarily the two best in the pool. """
+		candidates = sorted(pool, key=lambda p: key_map[p.id], reverse=True)
+		i = random.randrange(len(candidates) - 1)
+		return [candidates[i], candidates[i + 1]]
+
+	def display_name(self, p):
+		""" A player's Soracle name, so match messages read the same as the
+			site; their Discord name if they aren't linked (or Soracle was
+			down when the match formed, or they were added mid-draft). """
+		return self.soracle_names.get(p.id) or get_nick(p)
+
+	def _tier_or_rating_key(self, pool):
+		# Falls back to Elo if tier data didn't come through for everyone in the
+		# pool (Soracle unreachable, or Match.new couldn't fetch it) -- mixing
+		# known tiers with an Elo placeholder for the rest would make a
+		# "closest pair" comparison meaningless.
+		return self.tiers if all(p.id in self.tiers for p in pool) else self.ratings
+
 	def init_captains(self, pick_captains, captains_role_id):
 		pool = self.captain_pool()
 		if pick_captains == "by role and rating":
 			self.captains = self.sort_players(pool)[:2]
 		elif pick_captains == "fair pairs":
-			candidates = sorted(pool, key=lambda p: [self.ratings[p.id]], reverse=True)
-			i = random.randrange(len(candidates) - 1)
-			self.captains = [candidates[i], candidates[i + 1]]
+			self.captains = self._closest_pair(pool, self.ratings)
+		elif pick_captains == "fair pairs by tier":
+			# Same idea as "fair pairs", but skill is Soracle's tier instead of the
+			# bot's own community Elo.
+			self.captains = self._closest_pair(pool, self._tier_or_rating_key(pool))
+		elif pick_captains == "captain combos":
+			# Pre-agreed pairings (see captain_combos.py) -- falls back to
+			# fair-pairs-by-tier when nobody in this queue is on the list.
+			pool_names = {p.id: self.soracle_names[p.id] for p in pool if p.id in self.soracle_names}
+			pair_ids = captain_combos.pick_pair(pool_names) if pool_names else None
+			if pair_ids:
+				by_id = {p.id: p for p in pool}
+				self.captains = [by_id[i] for i in pair_ids]
+			else:
+				self.captains = self._closest_pair(pool, self._tier_or_rating_key(pool))
 		elif pick_captains == "random":
 			self.captains = random.sample(pool, 2)
 		elif pick_captains == "random with role preference":
@@ -277,8 +327,9 @@ class Match:
 			elif self.state == self.DRAFT:
 				await self.draft.start(ctx)
 				# With the interactive menu off, auto-post Soracle's suggestions for a
-				# full 12-player match so captains can copy them into manual picks.
-				if not self.cfg['soracle_balance']:
+				# full 12-player match so captains can copy them into manual picks --
+				# unless the queue's turned that off too (=options still works on demand).
+				if not self.cfg['soracle_balance'] and self.cfg['post_balance_suggestions']:
 					await self.post_balance_suggestions(ctx)
 			elif self.state == self.WAITING_REPORT:
 				await self.start_waiting_report(ctx)
@@ -422,9 +473,9 @@ class Match:
 
 		if len(winners) == 1 and len(losers) == 1:
 			p = winners[0]
-			msg += f"\n1. {get_nick(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}"
+			msg += f"\n1. {self.display_name(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}"
 			p = losers[0]
-			msg += f"\n2. {get_nick(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}"
+			msg += f"\n2. {self.display_name(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}"
 		else:
 			n = 0
 			for team in (winners, losers):
@@ -432,7 +483,7 @@ class Match:
 				avg_af = int(sum((after[p.id]['rating'] for p in team))/len(team))
 				msg += f"\n{n}. {team.name} {avg_bf} ⟼ {avg_af}\n"
 				msg += "\n".join(
-					(f"> {get_nick(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}" for p in team)
+					(f"> {self.display_name(p)} {before[p.id]['rating']} ⟼ {after[p.id]['rating']}" for p in team)
 				)
 				n += 1
 		msg += "```"
@@ -459,7 +510,7 @@ class Match:
 			await bot.stats.register_match_unranked(ctx, self)
 
 	def print(self):
-		return f"> *({self.id})* **{self.queue.name}** | `{join_and([get_nick(p) for p in self.players])}`"
+		return f"> *({self.id})* **{self.queue.name}** | `{join_and([self.display_name(p) for p in self.players])}`"
 
 	async def cancel(self, ctx):
 		if self.check_in.message and self.check_in.message.id in bot.waiting_reactions.keys():

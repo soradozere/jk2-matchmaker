@@ -73,13 +73,29 @@ async def run_slash_coro(ctx: SlashContext, coro: Callable, **kwargs):
 	except bot.Exc.PubobotException as e:
 		await ctx.error(str(e), title=e.__class__.__name__)
 	except Exception as e:
-		await ctx.error(str(e), title="RuntimeError")
+		tb = traceback.format_exc()
+		# Same as text commands: the owner sees the traceback inline when they
+		# trip it, and is DM'd it when anyone else does -- otherwise a slash
+		# crash only ever reached the one person who saw the ephemeral error.
+		detail = str(e)
+		if ctx.author.id == cfg.DC_OWNER_ID:
+			detail = f"{str(e)}\n```\n{tb[-1500:]}\n```"
+		await ctx.error(detail, title="RuntimeError")
+		if ctx.author.id != cfg.DC_OWNER_ID:
+			try:
+				owner = dc.get_user(cfg.DC_OWNER_ID) or await dc.fetch_user(cfg.DC_OWNER_ID)
+				if owner:
+					await owner.send(
+						f"⚠️ `/{coro.__name__} {kwargs}` by {ctx.author} crashed:\n```\n{tb[-1800:]}\n```"[:2000]
+					)
+			except Exception:
+				pass
 		log.error("\n".join([
 			f"Error processing /slash command {coro.__name__}.",
-			f"QC: {ctx.channel.guild.name}>#{ctx.channel.name} ({qc.id}).",
+			f"QC: {ctx.channel.guild.name}>#{ctx.channel.name} ({getattr(ctx.qc, 'id', None)})",
 			f"Member: {ctx.author} ({ctx.author.id}).",
 			f"Kwargs: {kwargs}.",
-			f"Exception: {str(e)}. Traceback:\n{traceback.format_exc()}=========="
+			f"Exception: {str(e)}. Traceback:\n{tb}=========="
 		]))
 
 
@@ -307,25 +323,19 @@ _put.on_autocomplete('match_id')(autocomplete.match_ids)
 
 # noadds -> ...
 
-@groups.admin_noadds.subcommand(name='list', description='Show noadds list.')
+@groups.admin_noadds.subcommand(name='list', description='Show banned players on this channel.')
 async def _noadds(
 		interaction: Interaction
 ): await run_slash(bot.commands.noadds, interaction=interaction)
 
 
-@groups.admin_noadds.subcommand(name='add', description='Ban a player from participating in the queues.')
+@groups.admin_noadds.subcommand(name='add', description='Ban a player from this channel for a number of games.')
 async def _noadd(
 		interaction: Interaction,
 		player: Member = SlashOption(verify=False),
-		duration: str = SlashOption(required=False),
+		games: int = SlashOption(required=False, description="1-5 games (default 1). Ticks down as matches start here."),
 		reason: str = SlashOption(required=False)
-):
-	async def _run(ctx, *args, _duration=None, **kwargs):
-		if _duration:
-			_duration = _parse_duration(ctx, _duration)
-		await bot.commands.noadd(ctx, *args, duration=_duration, **kwargs)
-
-	await run_slash(_run, interaction=interaction, player=player, _duration=duration, reason=reason)
+): await run_slash(bot.commands.noadd, interaction=interaction, player=player, games=games, reason=reason)
 
 
 @groups.admin_noadds.subcommand(name='remove', description='Remove a player from the noadds list.')
@@ -452,6 +462,25 @@ async def _remove(
 _remove.on_autocomplete("queues")(autocomplete.queues)
 
 
+@dc.slash_command(name='set_my_channels', description='Link another queue channel (bare /add or /remove covers both).', **guild_kwargs)
+async def _set_my_channels(
+	interaction: Interaction,
+	channel: TextChannel = SlashOption(description="A queue channel to link with this one."),
+): await run_slash(bot.commands.set_my_channels, interaction=interaction, channel=channel)
+
+
+@dc.slash_command(name='unlink_my_channels', description='Unlink every channel -- /add and /remove go back to affecting only where you use them.', **guild_kwargs)
+async def _unlink_my_channels(
+	interaction: Interaction,
+): await run_slash(bot.commands.set_my_channels, interaction=interaction, channels="off")
+
+
+@dc.slash_command(name='my_channels', description='Show your currently linked queue channels.', **guild_kwargs)
+async def _my_channels(
+	interaction: Interaction,
+): await run_slash(bot.commands.my_channels, interaction=interaction)
+
+
 @dc.slash_command(name='who', description='List added players.', **guild_kwargs)
 async def _who(
 	interaction: Interaction,
@@ -491,6 +520,19 @@ unsubscribe.on_autocomplete("queues")(autocomplete.queues)
 async def _teams(
 		interaction: Interaction
 ): await run_slash(bot.commands.show_teams, interaction=interaction)
+
+
+@dc.slash_command(name='combos', description='Show the pre-agreed captain pairings.', **guild_kwargs)
+async def _combos(
+		interaction: Interaction
+): await run_slash(bot.commands.show_captain_combos, interaction=interaction)
+
+
+@dc.slash_command(name='set_pick_order', description='Mod-only: change the current draft\'s pick order.', **guild_kwargs)
+async def _set_pick_order(
+		interaction: Interaction,
+		order: str = SlashOption(description="A preset name (standard/xango/batcher/copium) or a raw a/b string.")
+): await run_slash(bot.commands.set_pick_order, interaction=interaction, order=order)
 
 
 @dc.slash_command(name='subme', description='Request a substitute', **guild_kwargs)
@@ -626,7 +668,7 @@ async def _deaths(
 ): await run_slash(bot.commands.deaths_leaderboard, interaction=interaction)
 
 
-@soracle_slash(name='caps', description='Top 5 best cap conversion since tracking began.', **guild_kwargs)
+@soracle_slash(name='caps', description='Top 5 best cap conversion this month.', **guild_kwargs)
 async def _caps(
 		interaction: Interaction,
 ): await run_slash(bot.commands.caps_leaderboard, interaction=interaction)
@@ -660,6 +702,13 @@ async def _grabs(
 async def _bc(
 		interaction: Interaction,
 ): await run_slash(bot.commands.bc_leaderboard, interaction=interaction)
+
+
+@soracle_slash(name='impact', description='Top 10 players by impact, all-time.', **guild_kwargs)
+async def _impact(
+		interaction: Interaction,
+		page: int = SlashOption(required=False, description="Page beyond the top 10 (2 = 11-20, 3 = 21-30, ...)"),
+): await run_slash(bot.commands.impact_leaderboard, interaction=interaction, page=page or 1)
 
 
 @soracle_slash(name='flaghold', description='Top 5 by flag hold time this month.', **guild_kwargs)
@@ -879,6 +928,26 @@ async def _event_remove(
 		event: int = SlashOption(name="event", description="Which event (optional if only one is planned).", required=False, default=None)
 ): await run_slash(bot.commands.event_remove, interaction=interaction, event_id=event)
 _event_remove.on_autocomplete("event")(autocomplete.upcoming_events)
+
+
+@dc.slash_command(name='set_levelup_channel', description='Admin: set the channel for tier/title level-up announcements.', **guild_kwargs)
+async def _set_levelup_channel(
+		interaction: Interaction,
+		channel: TextChannel
+): await run_slash(bot.commands.set_levelup_channel, interaction=interaction, channel=channel)
+
+
+@dc.slash_command(name='set_levelup_enabled', description='Admin: turn tier/title level-up announcements on or off.', **guild_kwargs)
+async def _set_levelup_enabled(
+		interaction: Interaction,
+		enabled: bool
+): await run_slash(bot.commands.set_levelup_enabled, interaction=interaction, state=enabled)
+
+
+@dc.slash_command(name='levelup_config', description='Admin: show the current tier/title level-up watcher setup.', **guild_kwargs)
+async def _levelup_config(
+		interaction: Interaction,
+): await run_slash(bot.commands.levelup_config, interaction=interaction)
 
 
 @dc.slash_command(name='help', description='Show the everyday commands.', **guild_kwargs)

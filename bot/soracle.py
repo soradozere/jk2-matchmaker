@@ -4,6 +4,7 @@
 
 import asyncio
 import aiohttp
+from urllib.parse import quote
 
 from core.config import cfg
 
@@ -192,6 +193,35 @@ def _month_qs(year, month):
 	return f"?year={year}&month={month}" if year and month else ""
 
 
+async def fetch_tier_changelog(since=None):
+	""" Tier changes since a given ISO timestamp, oldest first, capped at 500 rows:
+		dict(changes=[{discordId, name, oldTier, newTier, at, source}]).
+		Omit `since` for full history (only safe to do once, to baseline a cursor --
+		don't announce results from an unbounded call, it'll include real past
+		history). discordId can be None for an unlinked player -- still a real
+		change, worth announcing by name without a mention. source is "calibrator"
+		or "admin". """
+	qs = f"?since={quote(since)}" if since else ""
+	status, data = await _request('GET', "/api/bot/tier-changelog" + qs)
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
+async def fetch_title_changelog(since=None):
+	""" Equipped-title changes since a given ISO timestamp, oldest first, capped at
+		500 rows: dict(changes=[{discordId, name, oldTitle, newTitle, rarity, at}]).
+		Same unbounded-`since` caveat as fetch_tier_changelog. oldTitle=None means
+		this is their first title ever; newTitle=None (and rarity=None) means they
+		unequipped -- both are meaningful nulls, not missing data. discordId can be
+		None the same way as the tier changelog. """
+	qs = f"?since={quote(since)}" if since else ""
+	status, data = await _request('GET', "/api/bot/title-changelog" + qs)
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	return data
+
+
 async def fetch_monthly_report(year=None, month=None):
 	""" Star player + rivalries for a month (default current): dict(month, starPlayer, rivalries, ...). """
 	status, data = await _request('GET', "/api/bot/monthly-report" + _month_qs(year, month))
@@ -208,26 +238,35 @@ async def fetch_monthly_aggregates(year=None, month=None):
 	return data
 
 
-async def fetch_stat_leaderboard(stat, all_time=False):
+async def fetch_stat_leaderboard(stat, all_time=False, period=None):
 	""" Top players by a match-stat: dict(stat, label, month, top=[{name, value}]).
 		Defaults to the current month; all_time=True sums the whole history, for
 		stats too rare to fill a monthly board (see =doom). `month` comes back as
-		"all time" in that case, so the embed title reads correctly either way. """
-	suffix = "?range=all" if all_time else ""
+		"all time" in that case, so the embed title reads correctly either way.
+		period ("day"/"week"/"month"/"year") is an alternative window, used by
+		/top -- mutually exclusive with all_time in practice, but this just
+		forwards whichever query params are given. """
+	params = []
+	if all_time:
+		params.append("range=all")
+	if period:
+		params.append(f"period={period}")
+	suffix = ("?" + "&".join(params)) if params else ""
 	status, data = await _request('GET', f"/api/bot/leaderboard/{stat}{suffix}")
 	if status != 200 or data is None:
 		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
 
 
-async def fetch_cap_conversion():
-	""" Cap conversion board: dict(window, matchCount, carryFloor, top=[...]).
+async def fetch_cap_conversion(year=None, month=None):
+	""" Cap conversion board for a month (default current):
+		dict(month, matchCount, carryFloor, top=[...]).
 
-		Not a monthly board. It reads the per-opponent kill matrix, which only
-		exists from 9 Aug 2026 and can't be backfilled, so the window is "since
-		tracking began" and `matchCount` says how many games back it. Anything
-		presenting this to players must not imply a longer history. """
-	status, data = await _request('GET', "/api/bot/cap-conversion")
+		Scoped to a calendar month like the other monthly boards. It reads the
+		per-opponent kill matrix, which only exists from 9 Aug 2026 and can't be
+		backfilled — every full month from Sep 2026 on is clean, but don't offer
+		a month picker that reaches back past that. """
+	status, data = await _request('GET', "/api/bot/cap-conversion" + _month_qs(year, month))
 	if status != 200 or data is None:
 		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
@@ -244,6 +283,33 @@ async def fetch_returner_rate():
 	if status != 200 or data is None:
 		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
 	return data
+
+
+async def fetch_player_summaries(discord_ids):
+	""" Batched name+tier lookup for a group of players: dict(int(discord_id) ->
+		dict(name, tier)). A discord_id that isn't linked to a Soracle player is
+		simply absent from the result, not an error -- callers should treat a
+		missing id as unknown. Used wherever a whole queue's worth of players'
+		identity/skill is needed at once (captain selection): fetching each
+		player individually (fetch_player, one call each) would mean N round
+		trips right when a queue fills. """
+	status, data = await _request(
+		'POST', "/api/bot/tiers", json_body=dict(discordIds=[str(i) for i in discord_ids])
+	)
+	if status != 200 or data is None:
+		raise SoracleError(f"The stats site returned an unexpected response (HTTP {status}).")
+	tiers, names = data.get('tiers') or {}, data.get('names') or {}
+	return {
+		int(k): dict(name=names.get(k), tier=tiers.get(k))
+		for k in tiers.keys() | names.keys()
+	}
+
+
+async def fetch_tiers(discord_ids):
+	""" Batched tier-only lookup -- see fetch_player_summaries. Kept separate
+		since most callers (tier-based fair-pairs captains) only need the tier. """
+	summaries = await fetch_player_summaries(discord_ids)
+	return {i: s['tier'] for i, s in summaries.items() if s.get('tier') is not None}
 
 
 async def fetch_balance(discord_ids):

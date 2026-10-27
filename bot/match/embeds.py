@@ -1,6 +1,7 @@
 from nextcord import Embed, Colour, Streaming, Member
+from nextcord.utils import escape_markdown
 from core.client import dc
-from core.utils import get_nick, join_and
+from core.utils import join_and
 from bot import soracle
 
 
@@ -19,9 +20,9 @@ class Embeds:
 	def _ranked_nick(self, p: Member):
 		if self.m.ranked:
 			if self.m.qc.cfg.emoji_ranks:
-				return f'{self.m.rank_str(p)}`{get_nick(p)}`'
-			return f'`{self.m.rank_str(p)}{get_nick(p)}`'
-		return f'`{get_nick(p)}`'
+				return f'{self.m.rank_str(p)}`{self.m.display_name(p)}`'
+			return f'`{self.m.rank_str(p)}{self.m.display_name(p)}`'
+		return f'`{self.m.display_name(p)}`'
 
 	def _ranked_mention(self, p: Member):
 		if self.m.ranked:
@@ -30,15 +31,42 @@ class Embeds:
 			return f'`{self.m.rank_str(p)}`{p.mention}'
 		return p.mention
 
-	def _ranked_display(self, p: Member, name: str):
-		""" Like _ranked_nick, but with a caller-supplied display name — used to show the
-			name Soracle has on record (the balancer site's name) instead of the Discord
-			nickname, when a balance option is available to read it from. """
-		if self.m.ranked:
-			if self.m.qc.cfg.emoji_ranks:
-				return f'{self.m.rank_str(p)}`{name}`'
-			return f'`{self.m.rank_str(p)}{name}`'
-		return f'`{name}`'
+	def _draft_line(self, p: Member):
+		""" One player per line on the draft embed: the name in bold, the rank
+			after it as a muted code tag, so the eye lands on names. Names are
+			escaped, so underscores and asterisks in nicks don't turn into
+			formatting. """
+		nick = f"**{escape_markdown(self.m.display_name(p))}**"
+		if not self.m.ranked:
+			return nick
+		rank = self.m.rank_str(p).strip()
+		if self.m.qc.cfg.emoji_ranks:
+			return f"{rank} {nick}"
+		return f"{nick} `{rank}`"
+
+	def _pick_turns(self):
+		""" The current and next turn of the draft as [(team, picks), ...].
+			A turn is a run of the same letter in the pick order, so with
+			"abbab..." the second captain picks 2 in a row. The count shrinks
+			as picks are made mid-turn, and never exceeds the unpicked pool.
+			Mirrors Draft.pick: the last slot of the order is never a turn
+			(it's auto-assigned), and an empty order means free picking. """
+		order = self.m.draft.pick_order
+		step = len(self.m.teams[0]) + len(self.m.teams[1]) - 2
+		left = len(self.m.teams[2])
+		turns = []
+		while step < len(order) - 1 and left > 0 and len(turns) < 2:
+			team, run = order[step], 0
+			while step + run < len(order) and order[step + run] == team:
+				run += 1
+			picks = min(run, left)
+			turns.append((self.m.teams[team], picks))
+			step += run
+			left -= picks
+		return turns
+
+	def _picks_str(self, n):
+		return self.m.gt("1 pick") if n == 1 else self.m.gt("{n} picks").format(n=n)
 
 	def _team_avg_rating(self, team):
 		return sum((self.m.ratings[p.id] for p in team)) // (len(team) or 1)
@@ -99,29 +127,34 @@ class Embeds:
 			for t in self.m.teams[:2]
 		]
 		team_players = [
-			" \u200b ".join([
-				self._ranked_nick(p) for p in t
+			"\n".join([
+				self._draft_line(p) for p in t
 			]) if len(t) else self.m.gt("empty")
 			for t in self.m.teams[:2]
 		]
-		embed.add_field(name=teams_names[0], value=" \u200b ❲ \u200b " + team_players[0] + " \u200b ❳", inline=False)
-		embed.add_field(name=teams_names[1], value=" \u200b ❲ \u200b " + team_players[1] + " \u200b ❳\n\u200b", inline=False)
+		embed.add_field(name=teams_names[0], value=team_players[0] + "\n\u200b", inline=False)
+		embed.add_field(name=teams_names[1], value=team_players[1] + "\n\u200b", inline=False)
 
 		if len(self.m.teams[2]):
 			embed.add_field(
 				name=self.m.gt("Unpicked:"),
-				value="\n".join((
-					" \u200b " + self._ranked_nick(p)
-				) for p in self.m.teams[2]),
+				value="\n".join(self._draft_line(p) for p in self.m.teams[2]),
 				inline=False
 			)
 
 			if len(self.m.teams[0]) and len(self.m.teams[1]):
 				msg = self.m.gt("Pick players with `/pick @player` command.")
-				pick_step = len(self.m.teams[0]) + len(self.m.teams[1]) - 2
-				picker_team = self.m.teams[self.m.draft.pick_order[pick_step]] if pick_step < len(self.m.draft.pick_order)-1 else None
-				if picker_team:
-					msg += "\n" + self.m.gt("{member}'s turn to pick!").format(member=f"<@{picker_team[0].id}>")
+				turns = self._pick_turns()
+				if turns:
+					team, picks = turns[0]
+					msg += "\n" + self.m.gt("{member}'s turn to pick: **{picks}**").format(
+						member=f"<@{team[0].id}>", picks=self._picks_str(picks)
+					)
+				if len(turns) > 1:
+					team, picks = turns[1]
+					msg += "\n" + self.m.gt("Next: {member}, {picks}").format(
+						member=f"<@{team[0].id}>", picks=self._picks_str(picks)
+					)
 			else:
 				msg = self.m.gt("Type {cmd} to become a captain and start picking teams.").format(
 					cmd=f"`{self.m.qc.cfg.prefix}capfor {'/'.join((team.name.lower() for team in self.m.teams[:2]))}`"
@@ -158,7 +191,7 @@ class Embeds:
 				ids = opt.get(ids_key) or []
 				names = result.get(names_key) or []
 				roster = " ".join(
-					f"`{get_nick(members[int(x)])}`" if x and int(x) in members else f"`{names[n] if n < len(names) else '?'}`"
+					f"`{self.m.display_name(members[int(x)])}`" if x and int(x) in members else f"`{names[n] if n < len(names) else '?'}`"
 					for n, x in enumerate(ids)
 				) or self.m.gt("empty")
 				rows.append(f"{team.emoji} {roster}")
@@ -197,18 +230,29 @@ class Embeds:
 				# for each player where Soracle has it, instead of whatever their Discord nick is.
 				result = option.get('result') or {}
 				tier_mic_keys = (('redTierTotal', 'redMic'), ('blueTierTotal', 'blueMic'))
-				soracle_names = {}
-				for ids_key, names_key in (('teamRedDiscordIds', 'teamRed'), ('teamBlueDiscordIds', 'teamBlue')):
-					ids, names = option.get(ids_key) or [], result.get(names_key) or []
+				soracle_names, soracle_tiers = {}, {}
+				for ids_key, names_key, tiers_key in (
+					('teamRedDiscordIds', 'teamRed', 'redTiers'), ('teamBlueDiscordIds', 'teamBlue', 'blueTiers')
+				):
+					ids = option.get(ids_key) or []
+					names, tiers = result.get(names_key) or [], result.get(tiers_key) or []
 					soracle_names.update({int(i): names[n] for n, i in enumerate(ids) if i and n < len(names)})
+					soracle_tiers.update({int(i): tiers[n] for n, i in enumerate(ids) if i and n < len(tiers)})
 				for t, (tier_key, mic_key) in zip(self.m.teams[:2], tier_mic_keys):
 					name = f"{t.emoji} {t.name.upper()}"
 					if self.m.ranked:
 						name += f" ​ `〈{self._team_avg_rating(t)}〉`"
 					name += f" ​ `〈tier {result.get(tier_key, '?')}〉` 🎤{result.get(mic_key, '?')}"
+					# Sort by each player's individual Soracle tier when the balance API
+					# provides it; fall back to the bot's own Elo rating otherwise (older
+					# Soracle deploys / mixed units would make a combined sort meaningless).
+					if all(p.id in soracle_tiers for p in t):
+						ranked_team = sorted(t, key=lambda p: soracle_tiers[p.id], reverse=True)
+					else:
+						ranked_team = sorted(t, key=lambda p: self.m.ratings[p.id], reverse=True)
 					roster = "\n".join(
-						"`{n}` {label}".format(n=n + 1, label=self._ranked_display(p, soracle_names.get(p.id) or get_nick(p)))
-						for n, p in enumerate(t)
+						"`{n}` `{label}`".format(n=n + 1, label=soracle_names.get(p.id) or self.m.display_name(p))
+						for n, p in enumerate(ranked_team)
 					) or self.m.gt("empty")
 					embed.add_field(name=name, value=roster, inline=True)
 			else:

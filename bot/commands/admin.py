@@ -4,24 +4,23 @@ __all__ = [
 	'phrases_add', 'phrases_clear', 'undo_match'
 ]
 
-from time import time
-from datetime import timedelta
 from nextcord import Member
 
-from core.utils import seconds_to_str, get_nick
+from core.utils import get_nick
 
 import bot
 
 
 async def noadds(ctx):
+	""" Lists active bans on THIS channel only -- bans are per-channel now,
+		not guild-wide (see bot/stats/noadds.py). """
 	data = await bot.noadds.get_noadds(ctx)
-	now = int(time())
 	s = "```markdown\n"
-	s += ctx.qc.gt(" ID | Prisoner | Left | Reason")
+	s += ctx.qc.gt(" ID | Prisoner | Games left | Reason")
 	s += "\n----------------------------------------\n"
 	if len(data):
 		s += "\n".join((
-			f" {i['id']} | {i['name']} | {seconds_to_str(max(0, (i['at'] + i['duration']) - now))} | {i['reason'] or '-'}"
+			f" {i['id']} | {i['name']} | {max(0, i['games_remaining'])} | {i['reason'] or '-'}"
 			for i in data
 		))
 	else:
@@ -29,18 +28,16 @@ async def noadds(ctx):
 	await ctx.reply(s + "\n```")
 
 
-async def noadd(ctx, player: Member, duration: timedelta, reason: str = None):
+async def noadd(ctx, player: Member, games: int = None, reason: str = None):
 	ctx.check_perms(ctx.Perms.MODERATOR)
-	if not duration:
-		duration = timedelta(hours=2)
-	if duration > timedelta(days=365*100):
-		raise bot.Exc.ValueError(ctx.qc.gt("Specified duration time is too long."))
-	await bot.noadds.noadd(
-		ctx=ctx, member=player, duration=int(duration.total_seconds()), moderator=ctx.author, reason=reason
-	)
-	await ctx.success(ctx.qc.gt("Banned **{member}** for `{duration}`.").format(
-		member=get_nick(player),
-		duration=duration.__str__()
+	games = bot.noadds.MIN_GAMES if games is None else games
+	if not (bot.noadds.MIN_GAMES <= games <= bot.noadds.MAX_GAMES):
+		raise bot.Exc.ValueError(ctx.qc.gt("Game ban must be between {min} and {max} games.").format(
+			min=bot.noadds.MIN_GAMES, max=bot.noadds.MAX_GAMES
+		))
+	applied = await bot.noadds.noadd(ctx=ctx, member=player, games=games, moderator=ctx.author, reason=reason)
+	await ctx.success(ctx.qc.gt("Banned **{member}** from this channel for `{games}` game{s}.").format(
+		member=get_nick(player), games=applied, s="" if applied == 1 else "s"
 	))
 
 

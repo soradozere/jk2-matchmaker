@@ -113,12 +113,18 @@ class PickupQueue:
 				"pick_captains",
 				display="Pick captains",
 				section="Teams",
-				options=["by role and rating", "fair pairs", "random with role preference", "random", "no captains"],
+				options=[
+					"by role and rating", "fair pairs", "fair pairs by tier", "captain combos",
+					"random with role preference", "random", "no captains"
+				],
 				default="by role and rating",
 				description="\n".join([
 					"Set how captains should be picked (for 'draft' or 'no teams' above):",
 					"  by role and rating - sort by captain role and rating and pick the best",
 					"  fair pairs - pick random pair of players with closest ratings to each other",
+					"  fair pairs by tier - same as fair pairs, but by Soracle tier instead of rating",
+					"  captain combos - use the community's pre-agreed captain pairings (see captain_combos.py); "
+					"falls back to fair pairs by tier if nobody in queue is on the list",
 					"  random with role preference - pick captains randomly with preference of the captain role",
 					"  random - pick captains randomly",
 					"  no captains - do not pick captains automatically"
@@ -135,6 +141,19 @@ class PickupQueue:
 					"Automatically place teams into Soracle's Perfect Balance when the queue starts",
 					"(12-player queues, 'draft' pick mode; over 12 players falls back to manual picking).",
 					"An admin can type =manual to switch to manual picks, and =rebalance to auto-balance again."
+				])
+			),
+			Variables.BoolVar(
+				"post_balance_suggestions",
+				display="Post balance suggestions",
+				section="Teams",
+				default=1,
+				notnull=True,
+				description="\n".join([
+					"With 'Auto balance' off, automatically post Soracle's balance suggestions",
+					"alongside the draft-stage message for a full 12-player match, so captains",
+					"can copy one into manual picks. Turn off to draft with no suggestions posted",
+					"-- =options still works on demand either way."
 				])
 			),
 			Variables.StrVar(
@@ -359,6 +378,7 @@ class PickupQueue:
 			no_captain_role_id=self.cfg.no_captain_role.id if self.cfg.no_captain_role else None,
 			pick_teams=self.cfg.pick_teams, pick_order=self.cfg.pick_order,
 			soracle_balance=self.cfg.soracle_balance,
+			post_balance_suggestions=self.cfg.post_balance_suggestions,
 			maps=[i['name'] for i in self.cfg.maps], vote_maps=self.cfg.vote_maps,
 			map_count=self.cfg.map_count, check_in_timeout=self.cfg.check_in_timeout,
 			check_in_discard=self.cfg.check_in_discard, check_in_discard_immediately=self.cfg.check_in_discard_immediately,

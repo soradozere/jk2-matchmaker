@@ -3,24 +3,23 @@ __all__ = [
 	'kills_leaderboard', 'deaths_leaderboard', 'caps_leaderboard', 'potm', 'rivals',
 	'grabs_leaderboard', 'bc_leaderboard', 'flaghold_leaderboard', 'returns_leaderboard',
 	'streaks_leaderboard', 'doom_leaderboard', 'redblue', 'nemesis', 'friend', 'curse', 'duos', 'wrapped', 'last_game_soracle',
-	'balance_options', 'achievements'
+	'balance_options', 'achievements', 'impact_leaderboard'
 ]
 
 import re
 from math import ceil
-from random import choice
 from datetime import datetime, timezone
 from urllib.parse import quote
 
 from nextcord import Member, Embed, Colour
 
-from core.utils import find, get_nick
+from core.utils import find, get_nick, discord_table
 
 import bot
 from bot import soracle
 
 # Site role names -> community names
-ROLE_DISPLAY = {"Cleaner": "BC"}
+ROLE_DISPLAY = {"Cleaner": "BC", "returns": "return"}
 
 # Public site for player-facing links (embed titles, profile links). See
 # soracle.site_url() for why this is not SORACLE_API_URL.
@@ -159,6 +158,50 @@ async def doom_leaderboard(ctx):
 
 async def bc_leaderboard(ctx):
 	await _stat_leaderboard(ctx, 'base_cleaner', "Top base cleaners")
+
+
+async def impact_leaderboard(ctx, page: int = 1):
+	""" =impact / =impact 2 / =impact 3 -- top 10 players by impact this
+		month, paginated 10 at a time (same paging pattern as the vanilla
+		=lb) -- month-to-date, same as the other stat boards (=kills, =caps).
+
+		Plain message + discord_table, like =lb's actual rendering -- not an
+		embed. Embeds cap out around ~430px wide regardless of window size,
+		too narrow for a 6-column table (it wraps mid-row); a bare message
+		gets the full channel width instead. """
+	page = (page or 1) - 1
+	try:
+		data = await soracle.fetch_stat_leaderboard('impact')
+	except bot.soracle.SoracleError as e:
+		raise bot.Exc.NotFoundError(str(e))
+
+	full = data.get('top') or []
+	pages = ceil(len(full) / 10) or 1
+	page_rows = full[page * 10:(page + 1) * 10]
+	if not page_rows:
+		raise bot.Exc.NotFoundError(
+			ctx.qc.gt("Nothing recorded this month yet.") if page == 0 else ctx.qc.gt("That page doesn't exist.")
+		)
+
+	rows = []
+	for n, r in enumerate(page_rows):
+		wins, losses = r.get('wins', 0), r.get('losses', 0)
+		winrate = int(wins * 100 / ((wins + losses) or 1))
+		rows.append([
+			(page * 10) + n + 1,
+			r['name'],
+			r.get('value', '?'),
+			r.get('matches', wins + losses),
+			f"{wins}/{losses} ({winrate}%)",
+			ROLE_DISPLAY.get(r.get('role'), r.get('role') or '—')
+		])
+
+	header = "⚡ {title} — {month} — {page_info}".format(
+		title=ctx.qc.gt("Impact leaderboard"),
+		month=data.get('month', 'this month'),
+		page_info=ctx.qc.gt("Page {page} of {pages}").format(page=page + 1, pages=pages)
+	)
+	await ctx.reply(header + "\n" + discord_table(["№", "Player", "Impact", "Matches", "W/L", "Main Role"], rows))
 
 
 async def _monthly_players(ctx):
@@ -640,16 +683,16 @@ async def caps_leaderboard(ctx):
 	# /kill resets (how support hands the flag to a runner) resolve neither way
 	# and are ignored, instead of counting against you as they did under grabs.
 	#
-	# Ordering and the qualifying floor are the site's, computed once in
-	# lib/cap-conversion.ts so Discord and the web page can't disagree.
+	# Monthly board, rolling over with the rest of the stats. Ordering and the
+	# qualifying floor are the site's, computed once in lib/cap-conversion.ts so
+	# Discord and the web page can't disagree.
 	try:
 		data = await soracle.fetch_cap_conversion()
 	except bot.soracle.SoracleError as e:
 		raise bot.Exc.NotFoundError(str(e))
 
 	top = (data.get('top') or [])[:5]
-	window = data.get('window') or "since tracking began"
-	embed = Embed(title=f"Best cap conversions — {window}", colour=Colour(0x50e3c2), url=SITE_URL)
+	embed = Embed(title=f"Best cap conversions — {data.get('month', 'this month')}", colour=Colour(0x50e3c2), url=SITE_URL)
 	if not top:
 		embed.description = ctx.qc.gt("Not enough capping data yet.")
 	else:
@@ -660,9 +703,10 @@ async def caps_leaderboard(ctx):
 			) for i, p in enumerate(top)
 		)
 		# The footer is load-bearing: without it the percentage looks like it
-		# covers every game ever played, and it covers a handful.
-		embed.set_footer(text="A run counts once it ends in a cap or a return. Since 9 Aug · {m} matches tracked · min {f} runs".format(
-			m=data.get('matchCount', 0), f=data.get('carryFloor', 0)
+		# covers every game ever played, and early in a month it covers a handful.
+		m = data.get('matchCount', 0)
+		embed.set_footer(text="A run counts once it ends in a cap or a return. {m} match{es} tracked this month · min {f} runs".format(
+			m=m, es='' if m == 1 else 'es', f=data.get('carryFloor', 0)
 		))
 	await ctx.reply(embed=embed)
 
@@ -671,10 +715,6 @@ async def monthly_stats(ctx, player: Member = None):
 	target = ctx.author if not player else await ctx.get_member(player)
 	if not target:
 		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
-
-	if _suvix_prank(ctx, target):
-		await ctx.reply(embed=_suvix_embed())
-		return
 
 	try:
 		data = await soracle.fetch_player_stats(target.id)
@@ -752,32 +792,6 @@ RARITY_COLOUR = {
 	"legendary": 0xf5c542, "mythic": 0xeaeeff, "oneofone": 0xff2fb9,
 }
 
-# Suvix holds the only one-of-one crest in the community and checks on it via
-# =achievements/=stats roughly every ten minutes. When he looks himself up he
-# gets one of these instead of the page — the Monkey King bit. Rotates so it
-# doesn't go stale at his refresh rate. Nothing here is real: his crests and
-# stats are untouched on the site, this is purely a Discord-side gag.
-SUVIX_ID = 216608375771889666
-SUVIX_JABS = (
-	"Oooooh, oooh, ah ah ah! 🍌🍌🍌",
-	"Your achievements have been forfeit. Goodbye.",
-	"The Monkey King has lost his crown.",
-	"What are you looking for???",
-)
-
-
-def _suvix_prank(ctx, target):
-	""" True when Suvix is looking *himself* up. Keyed on caller and target both,
-		so he can still pull up other players, and so everyone else (admins
-		included) still sees his real page. """
-	return ctx.author.id == SUVIX_ID and target.id == SUVIX_ID
-
-
-def _suvix_embed():
-	""" The whole reply: one jab, no stats, no crests, no profile link. """
-	return Embed(description=f"## {choice(SUVIX_JABS)}", colour=Colour(0xf5c542))
-
-
 def _achievement_line(a):
 	""" One "🟡 **Batcher III** — Base cleans in a single match (**100+**)" row.
 		`requirement` is the current rank's threshold, sent only for tiered crests
@@ -797,10 +811,6 @@ async def achievements(ctx, player: Member = None):
 	target = ctx.author if not player else await ctx.get_member(player)
 	if not target:
 		raise bot.Exc.SyntaxError(ctx.qc.gt("Specified user not found."))
-
-	if _suvix_prank(ctx, target):
-		await ctx.reply(embed=_suvix_embed())
-		return
 
 	try:
 		data = await soracle.fetch_achievements(target.id)

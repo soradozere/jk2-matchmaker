@@ -30,6 +30,7 @@ SERVERS = [
 	dict(name="POMMESBUDE [CTF]", host="141.144.226.30", port=28070),
 	dict(name="NWH Tokyo", host="54.238.175.102", port=28070),
 	dict(name="slowburn/freedom #defrag", host="176.103.220.40", port=28070),
+	dict(name="New Jersey", host="208.167.239.201", port=28070),
 ]
 
 _was_above = {}  # "host:port" -> bool
